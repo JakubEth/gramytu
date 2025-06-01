@@ -25,22 +25,33 @@ export default function App() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showLogIn, setShowLogIn] = useState(false);
   const [user, setUser] = useState(null);
-  const [showProfile, setShowProfile] = useState(false); // MODAL PROFILU
+  const [showProfile, setShowProfile] = useState(false);
 
-  // Przy starcie aplikacji sprawdź token w localStorage
+  // Przy starcie aplikacji sprawdź token w localStorage i pobierz usera z backendu
   useEffect(() => {
     // Pobierz eventy
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
 
-    // Sprawdź token JWT
+    // Sprawdź token JWT i pobierz aktualne dane usera z backendu
     const token = localStorage.getItem("token");
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        // Możesz tu pobierać więcej danych, jeśli masz je w tokenie
-        setUser({ _id: decoded.userId, username: decoded.username, avatar: decoded.avatar });
+        fetch(`https://gramytu.onrender.com/users/${decoded.userId}`)
+          .then(res => res.json())
+          .then(userFromDb => {
+            setUser({
+              _id: userFromDb._id,
+              username: userFromDb.username,
+              avatar: userFromDb.avatar
+            });
+          })
+          .catch(() => {
+            setUser(null);
+            localStorage.removeItem("token");
+          });
       } catch {
         setUser(null);
         localStorage.removeItem("token");
@@ -90,7 +101,6 @@ export default function App() {
                 .then(setEvents);
             }}
           />
-
         </div>
       )}
 
