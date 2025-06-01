@@ -3,7 +3,7 @@ export default function Footer() {
       <footer className="w-full bg-indigo-900 text-white py-6 mt-8">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 px-4">
           <div>
-            <span className="font-semibold">© 2025 BoardMatch</span>
+            <span className="font-semibold">© 2025 GramyTu</span>
           </div>
           <div className="flex gap-4">
             <a href="mailto:kontakt@boardmatch.pl" className="hover:underline">Kontakt</a>
