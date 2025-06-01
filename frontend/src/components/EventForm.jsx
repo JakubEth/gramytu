@@ -90,7 +90,8 @@ export default function EventForm({ onAdd, user }) {
     form.contact.trim() &&
     form.type.trim() &&
     date &&
-    user?.username;
+    user?.username &&
+    user?._id; // wymagane!
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -104,7 +105,8 @@ export default function EventForm({ onAdd, user }) {
         lat: position[0],
         lng: position[1]
       },
-      host: user.username, // <-- organizator to aktualny user
+      host: user.username, // <-- nick organizatora
+      hostId: user._id,    // <-- ID organizatora (KLUCZOWE!)
       contact: form.contact,
       type: form.type,
       tags
@@ -286,7 +288,6 @@ export default function EventForm({ onAdd, user }) {
           Dodaj
         </button>
       </div>
-
       {/* PRAWA KOLUMNA: MAPA */}
       <div className="flex-1 flex flex-col items-center justify-center min-w-[340px]">
         <label className="block font-semibold mb-2 text-center">Wybierz lokalizację na mapie:</label>
