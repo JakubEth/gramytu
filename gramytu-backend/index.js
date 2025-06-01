@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const { Event, User } = require('./models');
@@ -33,7 +35,7 @@ app.post('/events', async (req, res) => {
   res.json(event);
 });
 
-// Nowa rejestracja użytkownika
+// Rejestracja
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -48,15 +50,20 @@ app.post('/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ 
-      username, 
-      password: hashedPassword 
-    });
+    const newUser = new User({ username, password: hashedPassword });
     
     await newUser.save();
+    
+    // Generuj token po rejestracji
+    const token = jwt.sign(
+      { userId: newUser._id, username: newUser.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(201).json({ 
-      _id: newUser._id,
-      username: newUser.username
+      token,
+      user: { _id: newUser._id, username: newUser.username }
     });
 
   } catch (error) {
@@ -65,22 +72,39 @@ app.post('/register', async (req, res) => {
   }
 });
 
-const bcrypt = require('bcryptjs'); // już powinno być zainstalowane
-
+// Logowanie
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const user = await User.findOne({ username });
-  if (!user) {
-    return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
-  }
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) {
-    return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
-  }
-  // Możesz tu dodać generowanie tokena JWT jeśli chcesz
-  res.json({ ok: true, user: { _id: user._id, username: user.username } });
-});
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+    }
 
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+    }
+
+    // Generuj token JWT
+    const token = jwt.sign(
+      { userId: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ 
+      ok: true,
+      token,
+      user: { _id: user._id, username: user.username }
+    });
+
+  } catch (error) {
+    console.error("Błąd logowania:", error);
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
 
 const PORT = process.env.PORT || 4000;
 
