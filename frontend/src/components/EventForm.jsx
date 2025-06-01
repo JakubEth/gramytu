@@ -32,14 +32,13 @@ const SUGGESTED_TAGS = [
 
 const MAX_TAGS = 6;
 
-export default function EventForm({ onAdd }) {
+export default function EventForm({ onAdd, user }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
     locationName: "",
-    host: "",
     contact: "",
-    type: "", // <-- typ wydarzenia
+    type: "",
   });
   const [position, setPosition] = useState([52.2297, 21.0122]);
   const [date, setDate] = useState(null);
@@ -88,10 +87,10 @@ export default function EventForm({ onAdd }) {
     form.title.trim() &&
     form.description.trim() &&
     form.locationName.trim() &&
-    form.host.trim() &&
     form.contact.trim() &&
     form.type.trim() &&
-    date;
+    date &&
+    user?.username;
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -105,9 +104,9 @@ export default function EventForm({ onAdd }) {
         lat: position[0],
         lng: position[1]
       },
-      host: form.host,
+      host: user.username, // <-- organizator to aktualny user
       contact: form.contact,
-      type: form.type, // <-- wysyłaj typ!
+      type: form.type,
       tags
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
@@ -121,7 +120,6 @@ export default function EventForm({ onAdd }) {
       title: "",
       description: "",
       locationName: "",
-      host: "",
       contact: "",
       type: ""
     });
@@ -180,14 +178,9 @@ export default function EventForm({ onAdd }) {
             </div>
             <div>
               <label className="block mb-1 text-sm font-semibold text-gray-700">Organizator</label>
-              <input
-                name="host"
-                placeholder="Organizator"
-                value={form.host}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              />
+              <div className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-indigo-700 font-semibold select-none cursor-not-allowed">
+                {user?.username || "Nieznany"}
+              </div>
             </div>
           </div>
           <div className="mb-2">
@@ -201,7 +194,6 @@ export default function EventForm({ onAdd }) {
               className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
             />
           </div>
-          {/* SELECT TYP WYDARZENIA */}
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">Typ wydarzenia</label>
             <select
@@ -295,7 +287,7 @@ export default function EventForm({ onAdd }) {
         </button>
       </div>
 
-      {/* PRAWA KOLUMNA: MAPA KWADRATOWA */}
+      {/* PRAWA KOLUMNA: MAPA */}
       <div className="flex-1 flex flex-col items-center justify-center min-w-[340px]">
         <label className="block font-semibold mb-2 text-center">Wybierz lokalizację na mapie:</label>
         <div

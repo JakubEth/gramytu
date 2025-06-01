@@ -96,6 +96,7 @@ export default function App() {
             </button>
             <EventForm
               onAdd={handleAdd}
+              user={user}
             />
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -5,6 +6,7 @@ import iconBoardgame from "../assets/marker-boardgame.png";
 import iconComputer from "../assets/marker-computer.png";
 import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
+import UserProfile from "./UserProfile";
 
 const icons = {
   planszowka: L.icon({
@@ -34,6 +36,9 @@ const icons = {
 };
 
 export default function LandingMap({ events }) {
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileUser, setProfileUser] = useState(null);
+
   return (
     <div className="w-full h-[350px] rounded-2xl overflow-hidden shadow-xl mb-4">
       <MapContainer
@@ -72,7 +77,17 @@ export default function LandingMap({ events }) {
                   </div>
                 )}
                 <div className="text-xs text-gray-400 mt-2">
-                  Organizator: <span className="font-medium text-gray-600">{ev.host}</span>
+                  Organizator:{" "}
+                  <button
+                    className="text-indigo-600 underline hover:text-indigo-800"
+                    type="button"
+                    onClick={() => {
+                      setProfileUser({ username: ev.host, _id: ev.hostId || "brak" });
+                      setShowProfile(true);
+                    }}
+                  >
+                    {ev.host}
+                  </button>
                   {ev.contact && (
                     <>
                       <br />
@@ -85,6 +100,13 @@ export default function LandingMap({ events }) {
           </Marker>
         ))}
       </MapContainer>
+
+      {/* MODAL PROFILU */}
+      {showProfile && profileUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <UserProfile user={profileUser} onClose={() => setShowProfile(false)} />
+        </div>
+      )}
     </div>
   );
 }
