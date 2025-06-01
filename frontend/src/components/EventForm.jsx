@@ -30,6 +30,8 @@ const SUGGESTED_TAGS = [
   "turniej", "spotkanie", "familijne", "strategiczne", "karcianki", "RPG", "nowość", "klasyk"
 ];
 
+const MAX_TAGS = 6;
+
 export default function EventForm({ onAdd }) {
   const [form, setForm] = useState({
     title: "",
@@ -61,13 +63,22 @@ export default function EventForm({ onAdd }) {
   const handleTagKeyDown = e => {
     if ((e.key === "Enter" || e.key === ",") && tagInput.trim() !== "") {
       e.preventDefault();
-      if (!tags.includes(tagInput.trim())) {
+      if (
+        !tags.includes(tagInput.trim()) &&
+        tags.length < MAX_TAGS
+      ) {
         setTags([...tags, tagInput.trim()]);
       }
       setTagInput("");
     }
     if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
       setTags(tags.slice(0, -1));
+    }
+  };
+
+  const handleAddSuggestedTag = tag => {
+    if (!tags.includes(tag) && tags.length < MAX_TAGS) {
+      setTags([...tags, tag]);
     }
   };
 
@@ -182,7 +193,9 @@ export default function EventForm({ onAdd }) {
             </LocalizationProvider>
           </div>
           <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Tagi:</label>
+            <label className="block mb-1 text-sm font-semibold text-gray-700">
+              Tagi: <span className="text-gray-400 text-xs">(max {MAX_TAGS})</span>
+            </label>
             <div className="flex flex-wrap gap-2 mb-2">
               {tags.map((tag, idx) => (
                 <span
@@ -204,9 +217,10 @@ export default function EventForm({ onAdd }) {
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
-                placeholder="Dodaj tag i Enter"
+                placeholder={tags.length >= MAX_TAGS ? "Limit tagów" : "Dodaj tag i Enter"}
                 className="px-3 py-1 border rounded-full text-sm focus:border-indigo-500 outline-none"
                 style={{ minWidth: 80, maxWidth: 150 }}
+                disabled={tags.length >= MAX_TAGS}
               />
             </div>
             <div className="flex flex-wrap gap-2 mt-1">
@@ -219,7 +233,9 @@ export default function EventForm({ onAdd }) {
                       ? "bg-indigo-600 text-white border-indigo-600"
                       : "bg-gray-100 text-gray-600 border-gray-300"
                   }`}
-                  onClick={() => setTags(tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag])}
+                  onClick={() => handleAddSuggestedTag(tag)}
+                  disabled={tags.includes(tag) || tags.length >= MAX_TAGS}
+                  style={tags.length >= MAX_TAGS && !tags.includes(tag) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
                 >
                   {tag}
                 </button>
