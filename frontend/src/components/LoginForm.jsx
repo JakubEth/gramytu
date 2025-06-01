@@ -19,8 +19,8 @@ export default function LoginForm({ onSuccess }) {
       });
       const data = await res.json();
       setLoading(false);
-      if (res.ok && data.ok) {
-        onSuccess && onSuccess(data.user);
+      if (res.ok && data.ok && data.token && data.user) {
+        onSuccess && onSuccess(data); // <-- PRZEKAŻ CAŁY OBIEKT data!
       } else {
         setError(data.error || "Błąd logowania");
       }
