@@ -11,17 +11,22 @@ export default function LoginForm({ onSuccess }) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await fetch("https://gramytu.onrender.com/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form)
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      onSuccess && onSuccess(data);
-    } else {
-      setError(data.error || "Błąd logowania");
+    try {
+      const res = await fetch("https://gramytu.onrender.com/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (res.ok && data.ok) {
+        onSuccess && onSuccess(data.user);
+      } else {
+        setError(data.error || "Błąd logowania");
+      }
+    } catch (err) {
+      setLoading(false);
+      setError("Brak połączenia z serwerem");
     }
   };
 

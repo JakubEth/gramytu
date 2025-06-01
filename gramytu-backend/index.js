@@ -66,6 +66,23 @@ app.post('/register', async (req, res) => {
   }
 });
 
+const bcrypt = require('bcryptjs'); // już powinno być zainstalowane
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (!user) {
+    return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+  }
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) {
+    return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+  }
+  // Możesz tu dodać generowanie tokena JWT jeśli chcesz
+  res.json({ ok: true, user: { _id: user._id, username: user.username } });
+});
+
+
 const PORT = process.env.PORT || 4000;
 
 mongoose.connect(process.env.MONGO_URI)
