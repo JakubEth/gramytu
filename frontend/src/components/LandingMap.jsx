@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -9,35 +9,30 @@ import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
 
 const icons = {
-  planszowka: L.icon({
-    iconUrl: iconBoardgame,
-    iconSize: [32, 38],
-    iconAnchor: [16, 38],
-    popupAnchor: [0, -38],
-  }),
-  komputerowa: L.icon({
-    iconUrl: iconComputer,
-    iconSize: [32, 38],
-    iconAnchor: [16, 38],
-    popupAnchor: [0, -38],
-  }),
-  fizyczna: L.icon({
-    iconUrl: iconPhysical,
-    iconSize: [32, 38],
-    iconAnchor: [16, 38],
-    popupAnchor: [0, -38],
-  }),
-  inne: L.icon({
-    iconUrl: iconOther,
-    iconSize: [32, 38],
-    iconAnchor: [16, 38],
-    popupAnchor: [0, -38],
-  }),
+  planszowka: L.icon({ iconUrl: iconBoardgame, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  komputerowa: L.icon({ iconUrl: iconComputer, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  fizyczna: L.icon({ iconUrl: iconPhysical, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
 export default function LandingMap({ events }) {
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
+  const [organizerNames, setOrganizerNames] = useState({}); // cache nicków
+
+  // Funkcja do pobierania nicku organizatora po hostId
+  const getOrganizerName = async (hostId, fallback) => {
+    if (!hostId) return fallback || "Nieznany";
+    if (organizerNames[hostId]) return organizerNames[hostId];
+    try {
+      const res = await fetch(`https://gramytu.onrender.com/users/${hostId}`);
+      const user = await res.json();
+      setOrganizerNames(names => ({ ...names, [hostId]: user.username }));
+      return user.username;
+    } catch {
+      return fallback || "Nieznany";
+    }
+  };
 
   return (
     <div className="w-full h-[350px] rounded-2xl overflow-hidden shadow-xl mb-4">
@@ -78,16 +73,12 @@ export default function LandingMap({ events }) {
                 )}
                 <div className="text-xs text-gray-400 mt-2">
                   Organizator:{" "}
-                  <button
-                    className="text-indigo-600 underline hover:text-indigo-800"
-                    type="button"
-                    onClick={() => {
-                      setProfileUser({ username: ev.host, _id: ev.hostId || "brak" });
-                      setShowProfile(true);
-                    }}
-                  >
-                    {ev.host}
-                  </button>
+                  <OrganizerNameButton
+                    hostId={ev.hostId}
+                    fallback={ev.host}
+                    setProfileUser={setProfileUser}
+                    setShowProfile={setShowProfile}
+                  />
                   {ev.contact && (
                     <>
                       <br />
@@ -108,5 +99,41 @@ export default function LandingMap({ events }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Komponent do asynchronicznego pobierania nicku organizatora
+function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile }) {
+  const [name, setName] = useState(fallback);
+
+  useEffect(() => {
+    if (!hostId) return;
+    fetch(`https://gramytu.onrender.com/users/${hostId}`)
+      .then(res => res.json())
+      .then(user => setName(user.username))
+      .catch(() => setName(fallback));
+  }, [hostId, fallback]);
+
+  return (
+    <button
+      className="text-indigo-600 underline hover:text-indigo-800"
+      type="button"
+      onClick={async () => {
+        if (hostId) {
+          try {
+            const res = await fetch(`https://gramytu.onrender.com/users/${hostId}`);
+            const user = await res.json();
+            setProfileUser(user);
+          } catch {
+            setProfileUser({ username: fallback, _id: hostId });
+          }
+        } else {
+          setProfileUser({ username: fallback, _id: hostId });
+        }
+        setShowProfile(true);
+      }}
+    >
+      {name}
+    </button>
   );
 }
