@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+
 const EventSchema = new mongoose.Schema({
   title: String,
   description: String,
@@ -11,17 +16,13 @@ const EventSchema = new mongoose.Schema({
   },
   host: String,
   contact: String,
-  type: String,        // <-- dodane pole typu
+  type: String,
   tags: [String],
   likes: [String],
   comments: [{ user: String, text: String }]
 });
 
-const UserSchema = new mongoose.Schema({
-  name: String,
-});
-
 module.exports = {
-  Event: mongoose.model('Event', EventSchema),
   User: mongoose.model('User', UserSchema),
+  Event: mongoose.model('Event', EventSchema),
 };
