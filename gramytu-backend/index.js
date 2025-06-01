@@ -34,15 +34,26 @@ app.get('/events', async (req, res) => {
   res.json(events);
 });
 
-// Utwórz event (host i hostId MUSZĄ być przekazane z frontu)
+// KLUCZOWY ENDPOINT: Pobierz pojedynczy event po ID
+app.get('/events/:id', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+    res.json(event);
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+// Utwórz event
 app.post('/events', async (req, res) => {
   const event = new Event({
     title: req.body.title,
     description: req.body.description,
     date: req.body.date,
     location: req.body.location,
-    host: req.body.host,         // <-- nick organizatora
-    hostId: req.body.hostId,     // <-- ID organizatora
+    host: req.body.host,
+    hostId: req.body.hostId,
     contact: req.body.contact,
     type: req.body.type,
     tags: req.body.tags,
@@ -54,7 +65,7 @@ app.post('/events', async (req, res) => {
   res.json(event);
 });
 
-// --- LIKE EVENTU ---
+// Like eventu
 app.post('/events/:id/like', auth, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -81,7 +92,7 @@ app.post('/events/:id/unlike', auth, async (req, res) => {
   }
 });
 
-// --- KOMENTOWANIE EVENTU ---
+// Komentowanie eventu
 app.post('/events/:id/comment', auth, async (req, res) => {
   try {
     const { text } = req.body;
@@ -109,7 +120,7 @@ app.get('/users/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
-    res.json({ 
+    res.json({
       _id: user._id,
       username: user.username,
       avatar: user.avatar || null
@@ -138,7 +149,7 @@ app.post('/register', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.status(201).json({ 
+    res.status(201).json({
       token,
       user: { _id: newUser._id, username: newUser.username }
     });
@@ -165,7 +176,7 @@ app.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.json({ 
+    res.json({
       ok: true,
       token,
       user: { _id: user._id, username: user.username }

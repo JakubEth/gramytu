@@ -102,8 +102,8 @@ export default function LandingMap({ events, user }) {
                   </div>
                   {/* --- LIKE & KOMENTARZE --- */}
                   <div className="mt-2">
-                    <LikeButton event={ev} user={user} />
-                    <CommentsSection event={ev} user={user} />
+                    <LikeButton eventId={ev._id} user={user} />
+                    <CommentsSection eventId={ev._id} user={user} />
                   </div>
                 </div>
               </Popup>
@@ -123,28 +123,40 @@ export default function LandingMap({ events, user }) {
 }
 
 // --- LIKE BUTTON ---
-function LikeButton({ event, user }) {
-  const [likes, setLikes] = useState(event.likes || []);
+function LikeButton({ eventId, user }) {
+  const [likes, setLikes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Pobierz lajki na start i po każdej zmianie
+  useEffect(() => {
+    fetch(`${API_URL}/events/${eventId}`)
+      .then(res => res.json())
+      .then(ev => setLikes(ev.likes || []));
+  }, [eventId]);
+
   const liked = user && likes.some(id => id === user._id || id?._id === user._id);
 
   const handleLike = async () => {
     if (!user) return;
-    const res = await fetch(
-      `https://gramytu.onrender.com/events/${event._id}/${liked ? "unlike" : "like"}`,
+    setLoading(true);
+    await fetch(
+      `${API_URL}/events/${eventId}/${liked ? "unlike" : "like"}`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       }
     );
-    const data = await res.json();
-    if (liked) setLikes(likes.filter(id => id !== user._id && id?._id !== user._id));
-    else setLikes([...likes, user._id]);
+    // Po kliknięciu pobierz świeże lajki z backendu
+    const res = await fetch(`${API_URL}/events/${eventId}`);
+    const ev = await res.json();
+    setLikes(ev.likes || []);
+    setLoading(false);
   };
 
   return (
     <button
       onClick={handleLike}
-      disabled={!user}
+      disabled={!user || loading}
       className="flex items-center gap-1 text-sm mb-2"
       title={user ? (liked ? "Cofnij polubienie" : "Polub") : "Zaloguj się, by polubić"}
     >
@@ -155,13 +167,20 @@ function LikeButton({ event, user }) {
 }
 
 // --- KOMENTARZE ---
-function CommentsSection({ event, user }) {
-  const [comments, setComments] = useState(event.comments || []);
+function CommentsSection({ eventId, user }) {
+  const [comments, setComments] = useState([]);
   const [text, setText] = useState("");
+
+  // Pobierz komentarze na start i po dodaniu
+  useEffect(() => {
+    fetch(`${API_URL}/events/${eventId}`)
+      .then(res => res.json())
+      .then(ev => setComments(ev.comments || []));
+  }, [eventId]);
 
   const handleAddComment = async () => {
     if (!user || !text.trim()) return;
-    const res = await fetch(`https://gramytu.onrender.com/events/${event._id}/comment`, {
+    await fetch(`${API_URL}/events/${eventId}/comment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -169,8 +188,10 @@ function CommentsSection({ event, user }) {
       },
       body: JSON.stringify({ text })
     });
-    const newComment = await res.json();
-    setComments([...comments, newComment]);
+    // Po dodaniu komentarza pobierz świeże komentarze
+    const res = await fetch(`${API_URL}/events/${eventId}`);
+    const ev = await res.json();
+    setComments(ev.comments || []);
     setText("");
   };
 
