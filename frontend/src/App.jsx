@@ -7,6 +7,7 @@ import Footer from "./components/Footer";
 
 export default function App() {
   const [events, setEvents] = useState([]);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetch("https://gramytu.onrender.com/events")
@@ -18,10 +19,30 @@ export default function App() {
 
   return (
     <div>
-      <Header />
+      <Header onOpenAddEvent={() => setShowModal(true)} />
       <MapView events={events} onAddEvent={handleAdd} />
       <Landing2025 />
       <Footer />
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <EventForm
+              onAdd={event => {
+                handleAdd(event);
+                setShowModal(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
