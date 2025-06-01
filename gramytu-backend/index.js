@@ -45,7 +45,6 @@ app.get('/events/:id', async (req, res) => {
   }
 });
 
-// Utwórz event
 app.post('/events', async (req, res) => {
   const event = new Event({
     title: req.body.title,
@@ -59,11 +58,16 @@ app.post('/events', async (req, res) => {
     tags: req.body.tags,
     likes: req.body.likes || [],
     comments: req.body.comments || [],
-    image: req.body.image
+    image: req.body.image,
+    maxParticipants: req.body.maxParticipants, // <-- DODAJ TO
+    paid: req.body.paid,                       // <-- DODAJ TO
+    price: req.body.price,                     // <-- DODAJ TO
+    participants: req.body.participants || []  // <-- DODAJ TO
   });
   await event.save();
   res.json(event);
 });
+
 
 // Like eventu
 app.post('/events/:id/like', auth, async (req, res) => {
