@@ -12,6 +12,22 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// --- MIDDLEWARE AUTORYZACJI ---
+const auth = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: "Brak tokenu autoryzacyjnego" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.userId);
+    if (!req.user) return res.status(401).json({ error: "Nieprawidłowy token" });
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Nieprawidłowy token" });
+  }
+};
+
+// --- ENDPOINTY EVENTÓW ---
+
 // Pobierz wszystkie eventy
 app.get('/events', async (req, res) => {
   const events = await Event.find();
@@ -31,10 +47,61 @@ app.post('/events', async (req, res) => {
     type: req.body.type,
     tags: req.body.tags,
     likes: req.body.likes || [],
-    comments: req.body.comments || []
+    comments: req.body.comments || [],
+    image: req.body.image
   });
   await event.save();
   res.json(event);
+});
+
+// --- LIKE EVENTU ---
+app.post('/events/:id/like', auth, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+    if (!event.likes.map(id => id.toString()).includes(req.user._id.toString())) {
+      event.likes.push(req.user._id);
+      await event.save();
+    }
+    res.json({ likes: event.likes.length });
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+app.post('/events/:id/unlike', auth, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+    event.likes = event.likes.filter(id => id.toString() !== req.user._id.toString());
+    await event.save();
+    res.json({ likes: event.likes.length });
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+// --- KOMENTOWANIE EVENTU ---
+app.post('/events/:id/comment', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: "Komentarz nie może być pusty" });
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+
+    const comment = {
+      user: req.user._id,
+      username: req.user.username,
+      text: text.trim(),
+      createdAt: new Date()
+    };
+    event.comments.push(comment);
+    await event.save();
+    res.json(comment);
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
 });
 
 // Pobierz usera po ID
@@ -109,7 +176,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// PATCH: zmiana nicku i update nicku w eventach
+// PATCH: zmiana nicku i update nicku w eventach + komentarzach
 app.patch('/users/:id', async (req, res) => {
   try {
     const { username, password, avatar } = req.body;
@@ -122,11 +189,16 @@ app.patch('/users/:id', async (req, res) => {
     const oldUser = await User.findById(req.params.id);
     if (!oldUser) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
 
-    // Jeśli zmieniono nick, zaktualizuj we wszystkich eventach
+    // Jeśli zmieniono nick, zaktualizuj we wszystkich eventach i komentarzach
     if (username && username !== oldUser.username) {
       await Event.updateMany(
         { hostId: oldUser._id },
         { $set: { host: username } }
+      );
+      await Event.updateMany(
+        { "comments.user": oldUser._id },
+        { $set: { "comments.$[elem].username": username } },
+        { arrayFilters: [{ "elem.user": oldUser._id }] }
       );
     }
 

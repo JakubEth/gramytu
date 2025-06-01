@@ -24,13 +24,18 @@ const EventSchema = new mongoose.Schema({
     default: 'inne'
   },
   tags: [String],
-  likes: [String],
-  comments: [{ user: String, text: String }],
+  likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  comments: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    username: String,
+    text: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
   image: {
     type: String,
     default: function() {
       const defaults = {
-        planszowka: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
+        planszowka: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?q=80&w=1631&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
         komputerowa: 'https://images.unsplash.com/photo-1511512578047-dfb367046420',
         fizyczna: 'https://images.unsplash.com/photo-1464983953574-0892a716854b',
         inne: 'https://images.unsplash.com/photo-1503676382389-4809596d5290'
@@ -39,6 +44,7 @@ const EventSchema = new mongoose.Schema({
     }
   }
 });
+
 
 
 module.exports = {

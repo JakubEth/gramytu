@@ -8,6 +8,7 @@ import iconComputer from "../assets/marker-computer.png";
 import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
+import { FaHeart, FaRegHeart } from "react-icons/fa";
 
 const icons = {
   planszowka: L.icon({ iconUrl: iconBoardgame, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
@@ -16,7 +17,7 @@ const icons = {
   inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
-export default function LandingMap({ events }) {
+export default function LandingMap({ events, user }) {
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [organizerNames, setOrganizerNames] = useState({});
@@ -97,6 +98,11 @@ export default function LandingMap({ events }) {
                       </>
                     )}
                   </div>
+                  {/* --- LIKE & KOMENTARZE --- */}
+                  <div className="mt-2">
+                    <LikeButton event={ev} user={user} />
+                    <CommentsSection event={ev} user={user} />
+                  </div>
                 </div>
               </Popup>
             </Marker>
@@ -114,7 +120,90 @@ export default function LandingMap({ events }) {
   );
 }
 
-// Komponent do asynchronicznego pobierania nicku organizatora
+// --- LIKE BUTTON ---
+function LikeButton({ event, user }) {
+  const [likes, setLikes] = useState(event.likes || []);
+  const liked = user && likes.some(id => id === user._id || id._id === user._id);
+
+  const handleLike = async () => {
+    if (!user) return;
+    const res = await fetch(
+      `/events/${event._id}/${liked ? "unlike" : "like"}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      }
+    );
+    const data = await res.json();
+    // Prosta aktualizacja stanu (możesz dodać fetch event po zmianie)
+    if (liked) setLikes(likes.filter(id => id !== user._id && id._id !== user._id));
+    else setLikes([...likes, user._id]);
+  };
+
+  return (
+    <button
+      onClick={handleLike}
+      disabled={!user}
+      className="flex items-center gap-1 text-sm mb-2"
+      title={user ? (liked ? "Cofnij polubienie" : "Polub") : "Zaloguj się, by polubić"}
+    >
+      {liked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
+      <span>{likes.length}</span>
+    </button>
+  );
+}
+
+// --- KOMENTARZE ---
+function CommentsSection({ event, user }) {
+  const [comments, setComments] = useState(event.comments || []);
+  const [text, setText] = useState("");
+
+  const handleAddComment = async () => {
+    if (!user || !text.trim()) return;
+    const res = await fetch(`/events/${event._id}/comment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify({ text })
+    });
+    const newComment = await res.json();
+    setComments([...comments, newComment]);
+    setText("");
+  };
+
+  return (
+    <div>
+      <div className="font-semibold text-xs text-indigo-700 mb-1">Komentarze:</div>
+      <ul className="mb-2 max-h-24 overflow-y-auto text-xs">
+        {comments.map((c, i) => (
+          <li key={i} className="mb-1">
+            <b>{c.username}:</b> {c.text}
+          </li>
+        ))}
+      </ul>
+      {user && (
+        <div className="flex gap-1">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Dodaj komentarz..."
+            className="border rounded px-2 py-1 flex-1 text-xs"
+          />
+          <button
+            onClick={handleAddComment}
+            className="bg-indigo-600 text-white px-2 rounded text-xs"
+          >
+            Dodaj
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- ORGANIZATOR ---
 function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile }) {
   const [name, setName] = useState(fallback);
 
