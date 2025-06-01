@@ -34,6 +34,7 @@ export default function App() {
 
   return (
     <div>
+      <RegisterForm onSuccess={user => alert(`Zarejestrowano: ${user.username}`)} />
       <Header onOpenAddEvent={() => setShowModal(true)} />
       <Landing2025 events={events} />
       <Footer />
