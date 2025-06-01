@@ -19,7 +19,7 @@ const icons = {
   inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
-export default function LandingMap({ events, user }) {
+export default function LandingMap({ events, user, setEvents }) {
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [organizerNames, setOrganizerNames] = useState({});
@@ -35,6 +35,13 @@ export default function LandingMap({ events, user }) {
       return user.username;
     } catch {
       return fallback || "Nieznany";
+    }
+  };
+
+  // Funkcja do usuwania eventu z listy (po stronie frontu)
+  const handleDeleteEvent = (eventId) => {
+    if (setEvents) {
+      setEvents(prev => prev.filter(ev => ev._id !== eventId));
     }
   };
 
@@ -105,6 +112,30 @@ export default function LandingMap({ events, user }) {
                     <LikeButton eventId={ev._id} user={user} />
                     <CommentsSection eventId={ev._id} user={user} />
                   </div>
+                  {/* --- USUWANIE EVENTU --- */}
+                  {user && ev.hostId === user._id && (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm("Na pewno usunąć to wydarzenie?")) return;
+                        const res = await fetch(
+                          `${API_URL}/events/${ev._id}`,
+                          {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                          }
+                        );
+                        if (res.ok) {
+                          handleDeleteEvent(ev._id);
+                          alert("Wydarzenie usunięte!");
+                        } else {
+                          alert("Nie udało się usunąć wydarzenia");
+                        }
+                      }}
+                      className="bg-red-600 text-white px-4 py-1 rounded mt-2"
+                    >
+                      Usuń wydarzenie
+                    </button>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -127,11 +158,20 @@ function LikeButton({ eventId, user }) {
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Pobierz lajki na start i po każdej zmianie
   useEffect(() => {
     fetch(`${API_URL}/events/${eventId}`)
-      .then(res => res.json())
-      .then(ev => setLikes(ev.likes || []));
+      .then(res => {
+        if (!res.ok) {
+          console.error("Błąd pobierania eventu (GET /events/:id):", res.status);
+          return { likes: [] };
+        }
+        return res.json();
+      })
+      .then(ev => setLikes(ev.likes || []))
+      .catch(err => {
+        console.error("Błąd fetch likes:", err);
+        setLikes([]);
+      });
   }, [eventId]);
 
   const liked = user && likes.some(id => id === user._id || id?._id === user._id);
@@ -139,17 +179,25 @@ function LikeButton({ eventId, user }) {
   const handleLike = async () => {
     if (!user) return;
     setLoading(true);
-    await fetch(
-      `${API_URL}/events/${eventId}/${liked ? "unlike" : "like"}`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    try {
+      await fetch(
+        `${API_URL}/events/${eventId}/${liked ? "unlike" : "like"}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        }
+      );
+      const res2 = await fetch(`${API_URL}/events/${eventId}`);
+      if (!res2.ok) {
+        setLikes([]);
+        setLoading(false);
+        return;
       }
-    );
-    // Po kliknięciu pobierz świeże lajki z backendu
-    const res = await fetch(`${API_URL}/events/${eventId}`);
-    const ev = await res.json();
-    setLikes(ev.likes || []);
+      const ev = await res2.json();
+      setLikes(ev.likes || []);
+    } catch (err) {
+      console.error("Błąd handleLike:", err);
+    }
     setLoading(false);
   };
 
@@ -171,28 +219,44 @@ function CommentsSection({ eventId, user }) {
   const [comments, setComments] = useState([]);
   const [text, setText] = useState("");
 
-  // Pobierz komentarze na start i po dodaniu
   useEffect(() => {
     fetch(`${API_URL}/events/${eventId}`)
-      .then(res => res.json())
-      .then(ev => setComments(ev.comments || []));
+      .then(res => {
+        if (!res.ok) {
+          console.error("Błąd pobierania eventu (GET /events/:id):", res.status);
+          return { comments: [] };
+        }
+        return res.json();
+      })
+      .then(ev => setComments(ev.comments || []))
+      .catch(err => {
+        console.error("Błąd fetch comments:", err);
+        setComments([]);
+      });
   }, [eventId]);
 
   const handleAddComment = async () => {
     if (!user || !text.trim()) return;
-    await fetch(`${API_URL}/events/${eventId}/comment`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      },
-      body: JSON.stringify({ text })
-    });
-    // Po dodaniu komentarza pobierz świeże komentarze
-    const res = await fetch(`${API_URL}/events/${eventId}`);
-    const ev = await res.json();
-    setComments(ev.comments || []);
-    setText("");
+    try {
+      await fetch(`${API_URL}/events/${eventId}/comment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ text })
+      });
+      const res = await fetch(`${API_URL}/events/${eventId}`);
+      if (!res.ok) {
+        setComments([]);
+        return;
+      }
+      const ev = await res.json();
+      setComments(ev.comments || []);
+      setText("");
+    } catch (err) {
+      console.error("Błąd handleAddComment:", err);
+    }
   };
 
   return (

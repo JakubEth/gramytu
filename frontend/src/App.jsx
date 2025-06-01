@@ -208,7 +208,7 @@ export default function App() {
         onSettings={handleSettings}
       />
       <Routes>
-        <Route path="/" element={<Landing2025 events={events} />} />
+        <Route path="/" element={<Landing2025 events={events} user={user}/>} />
         <Route path="/events" element={<EventsList />} />
         <Route
           path="/events/swipe"

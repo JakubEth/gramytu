@@ -83,7 +83,7 @@ function GlowCTA() {
   );
 }
 
-export default function Landing2025({ events }) {
+export default function Landing2025({ events, user }) {
   // Przykładowe statystyki, możesz podpiąć z backendu
   const stats = {
     events: events?.length || 124,
@@ -143,7 +143,7 @@ export default function Landing2025({ events }) {
           </div>
           {/* PRAWA: mapa + statystyki */}
           <div className="flex-1 flex flex-col items-center w-full max-w-xl">
-            <LandingMap events={events} />
+            <LandingMap events={events} user={user} />
             <EventStats events={events} />
           </div>
         </div>

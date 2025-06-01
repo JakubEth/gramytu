@@ -222,6 +222,23 @@ app.patch('/users/:id', async (req, res) => {
   }
 });
 
+// DELETE /events/:id
+app.delete('/events/:id', auth, async (req, res) => {
+  try {
+    // Usuwaj tylko jeśli user jest właścicielem eventu
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+    if (event.hostId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Brak uprawnień do usunięcia tego wydarzenia" });
+    }
+    await Event.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+
 const PORT = process.env.PORT || 4000;
 
 mongoose.connect(process.env.MONGO_URI)
