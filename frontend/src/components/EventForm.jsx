@@ -5,7 +5,6 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import pl from "date-fns/locale/pl";
 
-// Domyślne zdjęcia dla kategorii
 const DEFAULT_IMAGES = {
   planszowka: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
   komputerowa: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80",
@@ -52,10 +51,15 @@ export default function EventForm({ onAdd, user }) {
   const [date, setDate] = useState(null);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
-  const [image, setImage] = useState(null); // base64 lub url
+  const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const containerRef = useRef(null);
   const [mapSize, setMapSize] = useState(420);
+
+  // NOWE STANY:
+  const [maxParticipants, setMaxParticipants] = useState(10);
+  const [paid, setPaid] = useState(false);
+  const [price, setPrice] = useState(0);
 
   useEffect(() => {
     function resize() {
@@ -93,13 +97,12 @@ export default function EventForm({ onAdd, user }) {
     }
   };
 
-  // Obsługa zdjęcia
   const handleImageChange = e => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = ev => {
-        setImage(ev.target.result); // base64
+        setImage(ev.target.result);
         setImagePreview(ev.target.result);
       };
       reader.readAsDataURL(file);
@@ -109,7 +112,6 @@ export default function EventForm({ onAdd, user }) {
     }
   };
 
-  // Zmień podgląd na domyślny jeśli nie ma własnego zdjęcia
   useEffect(() => {
     if (!image && form.type) {
       setImagePreview(DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne);
@@ -124,7 +126,9 @@ export default function EventForm({ onAdd, user }) {
     form.type.trim() &&
     date &&
     user?.username &&
-    user?._id;
+    user?._id &&
+    maxParticipants > 0 &&
+    (!paid || price > 0);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -143,7 +147,10 @@ export default function EventForm({ onAdd, user }) {
       contact: form.contact,
       type: form.type,
       tags,
-      image: image || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne // <-- tu zdjęcie
+      image: image || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne,
+      maxParticipants,
+      paid,
+      price: paid ? price : 0
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
       method: "POST",
@@ -165,6 +172,9 @@ export default function EventForm({ onAdd, user }) {
     setImage(null);
     setImagePreview(null);
     setPosition([52.2297, 21.0122]);
+    setMaxParticipants(10);
+    setPaid(false);
+    setPrice(0);
   };
 
   return (
@@ -265,6 +275,43 @@ export default function EventForm({ onAdd, user }) {
               />
             </LocalizationProvider>
           </div>
+          {/* NOWE POLE: liczba miejsc */}
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Liczba miejsc</label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={maxParticipants}
+              onChange={e => setMaxParticipants(Number(e.target.value))}
+              required
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+            />
+          </div>
+          {/* NOWE POLE: płatność */}
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="paid"
+              checked={paid}
+              onChange={e => setPaid(e.target.checked)}
+            />
+            <label htmlFor="paid" className="text-sm">Uczestnictwo płatne</label>
+          </div>
+          {paid && (
+            <div className="mb-2">
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Kwota do zapłaty (PLN)</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={price}
+                onChange={e => setPrice(Number(e.target.value))}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              />
+            </div>
+          )}
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">
               Tagi: <span className="text-gray-400 text-xs">(max {MAX_TAGS})</span>

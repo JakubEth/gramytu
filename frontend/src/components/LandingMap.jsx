@@ -23,6 +23,7 @@ export default function LandingMap({ events, user, setEvents }) {
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [organizerNames, setOrganizerNames] = useState({});
+  const [commentsModalEvent, setCommentsModalEvent] = useState(null);
 
   // Funkcja do pobierania nicku organizatora po hostId
   const getOrganizerName = async (hostId, fallback) => {
@@ -67,75 +68,115 @@ export default function LandingMap({ events, user, setEvents }) {
               icon={icons[ev.type] || icons.inne}
             >
               <Popup>
-                <div className="min-w-[210px] max-w-[260px] p-2">
-                  {/* ZDJĘCIE WYDARZENIA */}
+                <div className="flex flex-row gap-3 min-w-[320px] max-w-[400px] items-start">
+                  {/* LEWO: ZDJĘCIE */}
                   {ev.image && (
                     <img
                       src={ev.image}
                       alt="Zdjęcie wydarzenia"
-                      className="mb-2 rounded-lg shadow w-full object-cover"
-                      style={{ maxHeight: 120 }}
+                      className="rounded-lg shadow w-24 h-24 object-cover flex-shrink-0"
+                      style={{ minWidth: 96, minHeight: 96, maxWidth: 96, maxHeight: 96 }}
                     />
                   )}
-                  <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    {ev.date?.slice(0, 10)} • {ev.location?.name}
-                  </div>
-                  <div className="text-sm text-gray-700 mb-2">{ev.description}</div>
-                  {ev.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {ev.tags.slice(0, 4).map(tag => (
-                        <span key={tag} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{tag}</span>
-                      ))}
-                      {ev.tags.length > 4 && (
-                        <span className="text-xs text-gray-400 ml-1">+{ev.tags.length - 4}</span>
+                  {/* PRAWO: INFO */}
+                  <div className="flex-1 flex flex-col">
+                    <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
+                    <div className="text-xs text-gray-500 mb-2">
+                      {ev.date?.slice(0, 10)} • {ev.location?.name}
+                    </div>
+                    <div className="text-sm text-gray-700 mb-2">{ev.description}</div>
+                    {ev.tags?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {ev.tags.slice(0, 4).map(tag => (
+                          <span key={tag} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{tag}</span>
+                        ))}
+                        {ev.tags.length > 4 && (
+                          <span className="text-xs text-gray-400 ml-1">+{ev.tags.length - 4}</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-400 mt-2">
+                      Organizator:{" "}
+                      <OrganizerNameButton
+                        hostId={ev.hostId}
+                        fallback={ev.host}
+                        setProfileUser={setProfileUser}
+                        setShowProfile={setShowProfile}
+                      />
+                      {ev.contact && (
+                        <>
+                          <br />
+                          Kontakt: <span className="text-gray-600">{ev.contact}</span>
+                        </>
                       )}
                     </div>
-                  )}
-                  <div className="text-xs text-gray-400 mt-2">
-                    Organizator:{" "}
-                    <OrganizerNameButton
-                      hostId={ev.hostId}
-                      fallback={ev.host}
-                      setProfileUser={setProfileUser}
-                      setShowProfile={setShowProfile}
-                    />
-                    {ev.contact && (
-                      <>
-                        <br />
-                        Kontakt: <span className="text-gray-600">{ev.contact}</span>
-                      </>
+                    {/* --- OPŁATA ZA UDZIAŁ --- */}
+                    {ev.paid && (
+                      <div className="text-xs text-indigo-700 font-semibold mb-1">
+                        Opłata za udział: {ev.price} zł
+                      </div>
+                    )}
+                    {/* Liczba miejsc */}
+                    <div className="text-xs text-gray-600 mb-2">
+                      Zapisani: {(ev.participants?.length || 0)}/{ev.maxParticipants}
+                    </div>
+                    {/* Like i przycisk do komentarzy */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <LikeButton eventId={ev._id} user={user} />
+                      <button
+                        onClick={() => setCommentsModalEvent(ev._id)}
+                        className="text-indigo-600 underline text-xs hover:text-indigo-800"
+                      >
+                        Komentarze
+                      </button>
+                    </div>
+                    {/* --- DOŁĄCZANIE I PŁATNOŚĆ --- */}
+                    {(ev.participants?.length || 0) < ev.maxParticipants ? (
+                      <button
+                        onClick={async () => {
+                          if (ev.paid) {
+                            alert(`Przekierowanie do płatności (mock): ${ev.price} zł`);
+                            return;
+                          }
+                          const res = await fetch(`${API_URL}/events/${ev._id}/join`, {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                          });
+                          if (res.ok) alert("Dołączono do wydarzenia!");
+                          else alert("Nie udało się dołączyć.");
+                        }}
+                        className="bg-indigo-600 text-white px-4 py-1 rounded mt-2"
+                      >
+                        {ev.paid ? `Opłać udział (${ev.price} zł)` : "Dołącz"}
+                      </button>
+                    ) : (
+                      <div className="text-red-500 font-semibold mt-2">Brak wolnych miejsc</div>
+                    )}
+                    {/* --- USUWANIE EVENTU --- */}
+                    {user && ev.hostId === user._id && (
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm("Na pewno usunąć to wydarzenie?")) return;
+                          const res = await fetch(
+                            `${API_URL}/events/${ev._id}`,
+                            {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                            }
+                          );
+                          if (res.ok) {
+                            handleDeleteEvent(ev._id);
+                            alert("Wydarzenie usunięte!");
+                          } else {
+                            alert("Nie udało się usunąć wydarzenia");
+                          }
+                        }}
+                        className="bg-red-600 text-white px-4 py-1 rounded mt-2"
+                      >
+                        Usuń wydarzenie
+                      </button>
                     )}
                   </div>
-                  {/* --- LIKE & KOMENTARZE --- */}
-                  <div className="mt-2">
-                    <LikeButton eventId={ev._id} user={user} />
-                    <CommentsSection eventId={ev._id} user={user} />
-                  </div>
-                  {/* --- USUWANIE EVENTU --- */}
-                  {user && ev.hostId === user._id && (
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm("Na pewno usunąć to wydarzenie?")) return;
-                        const res = await fetch(
-                          `${API_URL}/events/${ev._id}`,
-                          {
-                            method: "DELETE",
-                            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-                          }
-                        );
-                        if (res.ok) {
-                          handleDeleteEvent(ev._id);
-                          alert("Wydarzenie usunięte!");
-                        } else {
-                          alert("Nie udało się usunąć wydarzenia");
-                        }
-                      }}
-                      className="bg-red-600 text-white px-4 py-1 rounded mt-2"
-                    >
-                      Usuń wydarzenie
-                    </button>
-                  )}
                 </div>
               </Popup>
             </Marker>
@@ -149,6 +190,31 @@ export default function LandingMap({ events, user, setEvents }) {
           <UserProfile user={profileUser} onClose={() => setShowProfile(false)} />
         </div>
       )}
+
+      {/* MODAL KOMENTARZY */}
+      {commentsModalEvent && (
+        <Modal onClose={() => setCommentsModalEvent(null)}>
+          <CommentsSection eventId={commentsModalEvent} user={user} />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// --- MODAL ---
+function Modal({ children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+          aria-label="Zamknij"
+        >
+          ×
+        </button>
+        {children}
+      </div>
     </div>
   );
 }
@@ -261,16 +327,16 @@ function CommentsSection({ eventId, user }) {
 
   return (
     <div>
-      <div className="font-semibold text-xs text-indigo-700 mb-1">Komentarze:</div>
-      <ul className="mb-2 max-h-24 overflow-y-auto text-xs">
+      <div className="font-semibold text-xs text-indigo-700 mb-3">Komentarze:</div>
+      <ul className="mb-2 max-h-56 overflow-y-auto text-xs">
         {comments.map((c, i) => (
-          <li key={i} className="mb-1">
+          <li key={i} className="mb-2 border-b pb-1">
             <b>{c.username}:</b> {c.text}
           </li>
         ))}
       </ul>
       {user && (
-        <div className="flex gap-1">
+        <div className="flex gap-1 mt-2">
           <input
             value={text}
             onChange={e => setText(e.target.value)}

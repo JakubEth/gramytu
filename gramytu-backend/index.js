@@ -238,6 +238,18 @@ app.delete('/events/:id', auth, async (req, res) => {
   }
 });
 
+app.post('/events/:id/join', auth, async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+  if (event.participants.length >= event.maxParticipants)
+    return res.status(400).json({ error: "Brak wolnych miejsc" });
+  if (event.participants.includes(req.user._id))
+    return res.status(400).json({ error: "Już jesteś zapisany" });
+  event.participants.push(req.user._id);
+  await event.save();
+  res.json({ ok: true });
+});
+
 
 const PORT = process.env.PORT || 4000;
 

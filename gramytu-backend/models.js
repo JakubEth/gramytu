@@ -42,10 +42,12 @@ const EventSchema = new mongoose.Schema({
       };
       return defaults[this.type];
     }
-  }
+  },
+  maxParticipants: { type: Number, required: true }, // LIMIT MIEJSC
+  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // ZAPISANI UCZESTNICY
+  paid: { type: Boolean, default: false }, // CZY PŁATNE
+  price: { type: Number, default: 0 } // kwota w złotych
 });
-
-
 
 module.exports = {
   User: mongoose.model('User', UserSchema),
