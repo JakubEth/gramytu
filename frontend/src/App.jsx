@@ -6,7 +6,8 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import RegisterForm from "./components/RegisterForm";
 import LoginForm from "./components/LoginForm";
-import jwtDecode from "jwt-decode"; // npm install jwt-decode
+import { jwtDecode } from "jwt-decode";
+
 
 function SuccessIcon() {
   return (
