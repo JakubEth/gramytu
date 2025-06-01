@@ -67,24 +67,36 @@ export default function MapView({ events = [], onAddEvent }) {
 
       {/* Modal z formularzem */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg relative">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              aria-label="Zamknij"
-            >
-              ×
-            </button>
-            <EventForm
-              onAdd={event => {
-                onAddEvent(event);
-                setShowModal(false);
-              }}
-            />
-          </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div
+          className="bg-white rounded-2xl shadow-2xl p-6 w-full"
+          style={{
+            maxWidth: "1000px",      // szerokość modala na desktopie
+            width: "90vw",           // responsywność na mniejszych ekranach
+            maxHeight: "90vh",       // nie wyjdzie poza ekran
+            overflowY: "auto",
+            position: "relative"
+          }}
+        >
+          <button
+            onClick={() => setShowModal(false)}
+            className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+            aria-label="Zamknij"
+          >
+            ×
+          </button>
+          <EventForm
+            onAdd={event => {
+              onAddEvent(event);
+              setShowModal(false);
+            }}
+          />
         </div>
-      )}
+      </div>
+    )}
+
+
+
     </section>
   );
 }

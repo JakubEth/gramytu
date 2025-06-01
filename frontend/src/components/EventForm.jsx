@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import pl from "date-fns/locale/pl";
+import { TagsInput } from "react-tag-input-component";
 
 function LocationSelector({ position, setPosition }) {
   useMapEvents({
@@ -23,30 +27,51 @@ function LocationSelector({ position, setPosition }) {
   ) : null;
 }
 
+const SUGGESTED_TAGS = [
+  "turniej", "spotkanie", "familijne", "strategiczne", "karcianki", "RPG", "nowość", "klasyk"
+];
+
 export default function EventForm({ onAdd }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    date: "",
     locationName: "",
     host: ""
   });
-  const [position, setPosition] = useState([52.2297, 21.0122]); // domyślna lokalizacja
+  const [position, setPosition] = useState([52.2297, 21.0122]);
+  const [date, setDate] = useState(null);
+  const [tags, setTags] = useState([]);
+  const containerRef = useRef(null);
+  const [mapSize, setMapSize] = useState(420);
+
+  useEffect(() => {
+    function resize() {
+      if (containerRef.current) {
+        const height = containerRef.current.offsetHeight;
+        setMapSize(Math.max(Math.min(height, 520), 340));
+      }
+    }
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!date) return alert("Wybierz datę!");
     const event = {
       title: form.title,
       description: form.description,
-      date: form.date,
+      date: date.toISOString(),
       location: {
         name: form.locationName,
         lat: position[0],
         lng: position[1]
       },
-      host: form.host
+      host: form.host,
+      tags
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
       method: "POST",
@@ -58,39 +83,154 @@ export default function EventForm({ onAdd }) {
     setForm({
       title: "",
       description: "",
-      date: "",
       locationName: "",
       host: ""
     });
+    setDate(null);
+    setTags([]);
     setPosition([52.2297, 21.0122]);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg grid grid-cols-1 gap-4 mb-2">
-      <h2 className="text-xl font-bold text-indigo-700">Dodaj wydarzenie</h2>
-      <input name="title" placeholder="Tytuł" value={form.title} onChange={handleChange} required className="input" />
-      <input name="description" placeholder="Opis" value={form.description} onChange={handleChange} required className="input" />
-      <input name="date" placeholder="Data i godzina" value={form.date} onChange={handleChange} required className="input" />
-      <input name="locationName" placeholder="Miejsce (np. Planszówkowo)" value={form.locationName} onChange={handleChange} required className="input" />
-      <input name="host" placeholder="Organizator" value={form.host} onChange={handleChange} required className="input" />
-      <div>
-        <label className="block font-semibold mb-1">Wybierz lokalizację na mapie:</label>
-        <MapContainer
-          center={position}
-          zoom={13}
-          style={{ width: "100%", height: 220, borderRadius: "0.75rem", marginBottom: "1rem", zIndex: 30 }}
+    <form
+      ref={containerRef}
+      onSubmit={handleSubmit}
+      className="w-full max-w-[1100px] bg-white rounded-2xl shadow-2xl flex flex-col md:flex-row gap-10 p-6 md:p-10"
+      style={{ minHeight: 420, maxHeight: 700, overflowY: "auto" }}
+    >
+      {/* LEWA KOLUMNA: INPUTY */}
+      <div className="flex-1 flex flex-col gap-4 justify-between min-w-[320px] max-w-[500px]">
+        <div>
+          <h2 className="text-2xl font-bold text-indigo-700 mb-4">Dodaj wydarzenie</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <div>
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Tytuł</label>
+              <input
+                name="title"
+                placeholder="Tytuł"
+                value={form.title}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Opis</label>
+              <input
+                name="description"
+                placeholder="Opis"
+                value={form.description}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <div>
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Miejsce</label>
+              <input
+                name="locationName"
+                placeholder="Np. Planszówkowo"
+                value={form.locationName}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-semibold text-gray-700">Organizator</label>
+              <input
+                name="host"
+                placeholder="Organizator"
+                value={form.host}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              />
+            </div>
+          </div>
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Data wydarzenia</label>
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={pl}>
+              <DatePicker
+                label="Data wydarzenia"
+                value={date}
+                onChange={setDate}
+                slotProps={{
+                  textField: {
+                    required: true,
+                    fullWidth: true,
+                    className: "w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+                  }
+                }}
+              />
+            </LocalizationProvider>
+          </div>
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Tagi:</label>
+            <TagsInput
+              value={tags}
+              onChange={setTags}
+              name="tags"
+              placeHolder="Dodaj tagi"
+              classNames={{
+                input: "w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {SUGGESTED_TAGS.map(tag => (
+                <button
+                  type="button"
+                  key={tag}
+                  className={`px-3 py-1 rounded-full border text-sm ${
+                    tags.includes(tag)
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-gray-100 text-gray-600 border-gray-300"
+                  }`}
+                  onClick={() => setTags(tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag])}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition mt-4 w-full">
+          Dodaj
+        </button>
+      </div>
+
+      {/* PRAWA KOLUMNA: MAPA KWADRATOWA */}
+      <div className="flex-1 flex flex-col items-center justify-center min-w-[340px]">
+        <label className="block font-semibold mb-2 text-center">Wybierz lokalizację na mapie:</label>
+        <div
+          style={{
+            width: mapSize,
+            height: mapSize,
+            maxWidth: "100%",
+            borderRadius: "0.75rem",
+            overflow: "hidden",
+            boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.07)"
+          }}
+          className="bg-gray-100"
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <LocationSelector position={position} setPosition={setPosition} />
-        </MapContainer>
-        <div className="text-sm text-gray-500 mt-2">
+          <MapContainer
+            center={position}
+            zoom={13}
+            style={{ width: "100%", height: "100%", borderRadius: "0.75rem", zIndex: 30 }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <LocationSelector position={position} setPosition={setPosition} />
+          </MapContainer>
+        </div>
+        <div className="text-sm text-gray-500 mt-2 text-center">
           Wybrana lokalizacja: <b>{position[0].toFixed(5)}, {position[1].toFixed(5)}</b>
         </div>
       </div>
-      <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded hover:bg-indigo-700 transition">Dodaj</button>
     </form>
   );
 }
