@@ -10,9 +10,12 @@ const EventSchema = new mongoose.Schema({
     name: String,
   },
   host: String,
+  contact: String,      // <-- Dodane pole kontakt
+  tags: [String],       // <-- Dodane pole tagi
   likes: [String],
   comments: [{ user: String, text: String }]
 });
+
 const UserSchema = new mongoose.Schema({
   name: String,
 });

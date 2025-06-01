@@ -18,7 +18,17 @@ app.get('/events', async (req, res) => {
 });
 
 app.post('/events', async (req, res) => {
-  const event = new Event(req.body);
+  const event = new Event({
+    title: req.body.title,
+    description: req.body.description,
+    date: req.body.date,
+    location: req.body.location,
+    host: req.body.host,
+    contact: req.body.contact,  // <-- Dodane
+    tags: req.body.tags,        // <-- Dodane
+    likes: req.body.likes || [],
+    comments: req.body.comments || []
+  });
   await event.save();
   res.json(event);
 });
@@ -29,7 +39,7 @@ app.post('/users', async (req, res) => {
   res.json(user);
 });
 
-// Poprawiona konfiguracja portu
+// Konfiguracja portu
 const PORT = process.env.PORT || 4000;
 
 mongoose.connect(process.env.MONGO_URI)
