@@ -1,4 +1,27 @@
 import { useState } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+function LocationSelector({ position, setPosition }) {
+  useMapEvents({
+    click(e) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return position ? (
+    <Marker
+      position={position}
+      draggable={true}
+      eventHandlers={{
+        dragend: (e) => {
+          const marker = e.target;
+          const { lat, lng } = marker.getLatLng();
+          setPosition([lat, lng]);
+        },
+      }}
+    />
+  ) : null;
+}
 
 export default function EventForm({ onAdd }) {
   const [form, setForm] = useState({
@@ -6,10 +29,9 @@ export default function EventForm({ onAdd }) {
     description: "",
     date: "",
     locationName: "",
-    lat: "",
-    lng: "",
     host: ""
   });
+  const [position, setPosition] = useState([52.2297, 21.0122]); // domyślna lokalizacja
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -21,8 +43,8 @@ export default function EventForm({ onAdd }) {
       date: form.date,
       location: {
         name: form.locationName,
-        lat: Number(form.lat),
-        lng: Number(form.lng)
+        lat: position[0],
+        lng: position[1]
       },
       host: form.host
     };
@@ -38,10 +60,9 @@ export default function EventForm({ onAdd }) {
       description: "",
       date: "",
       locationName: "",
-      lat: "",
-      lng: "",
       host: ""
     });
+    setPosition([52.2297, 21.0122]);
   };
 
   return (
@@ -51,11 +72,24 @@ export default function EventForm({ onAdd }) {
       <input name="description" placeholder="Opis" value={form.description} onChange={handleChange} required className="input" />
       <input name="date" placeholder="Data i godzina" value={form.date} onChange={handleChange} required className="input" />
       <input name="locationName" placeholder="Miejsce (np. Planszówkowo)" value={form.locationName} onChange={handleChange} required className="input" />
-      <div className="flex gap-2">
-        <input name="lat" placeholder="Szerokość (lat)" value={form.lat} onChange={handleChange} required className="input flex-1" />
-        <input name="lng" placeholder="Długość (lng)" value={form.lng} onChange={handleChange} required className="input flex-1" />
-      </div>
       <input name="host" placeholder="Organizator" value={form.host} onChange={handleChange} required className="input" />
+      <div>
+        <label className="block font-semibold mb-1">Wybierz lokalizację na mapie:</label>
+        <MapContainer
+          center={position}
+          zoom={13}
+          style={{ width: "100%", height: 220, borderRadius: "0.75rem", marginBottom: "1rem", zIndex: 30 }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <LocationSelector position={position} setPosition={setPosition} />
+        </MapContainer>
+        <div className="text-sm text-gray-500 mt-2">
+          Wybrana lokalizacja: <b>{position[0].toFixed(5)}, {position[1].toFixed(5)}</b>
+        </div>
+      </div>
       <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded hover:bg-indigo-700 transition">Dodaj</button>
     </form>
   );
