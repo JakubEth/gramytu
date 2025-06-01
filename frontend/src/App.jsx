@@ -19,8 +19,7 @@ export default function App() {
   return (
     <div>
       <Header />
-      <EventForm onAdd={handleAdd} />
-      <MapView events={events} />
+      <MapView events={events} onAddEvent={handleAdd} />
       <Landing2025 />
       <Footer />
     </div>

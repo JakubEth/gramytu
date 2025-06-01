@@ -45,7 +45,7 @@ export default function EventForm({ onAdd }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg grid grid-cols-1 gap-4 mb-10">
+    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg grid grid-cols-1 gap-4 mb-2">
       <h2 className="text-xl font-bold text-indigo-700">Dodaj wydarzenie</h2>
       <input name="title" placeholder="Tytuł" value={form.title} onChange={handleChange} required className="input" />
       <input name="description" placeholder="Opis" value={form.description} onChange={handleChange} required className="input" />
