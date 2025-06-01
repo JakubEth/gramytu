@@ -37,7 +37,8 @@ export default function EventForm({ onAdd }) {
     title: "",
     description: "",
     locationName: "",
-    host: ""
+    host: "",
+    contact: ""
   });
   const [position, setPosition] = useState([52.2297, 21.0122]);
   const [date, setDate] = useState(null);
@@ -82,9 +83,18 @@ export default function EventForm({ onAdd }) {
     }
   };
 
+  // WALIDACJA: wszystkie wymagane pola muszą być wypełnione
+  const isFormValid =
+    form.title.trim() &&
+    form.description.trim() &&
+    form.locationName.trim() &&
+    form.host.trim() &&
+    form.contact.trim() &&
+    date;
+
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!date) return alert("Wybierz datę!");
+    if (!isFormValid) return;
     const event = {
       title: form.title,
       description: form.description,
@@ -95,6 +105,7 @@ export default function EventForm({ onAdd }) {
         lng: position[1]
       },
       host: form.host,
+      contact: form.contact,
       tags
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
@@ -108,7 +119,8 @@ export default function EventForm({ onAdd }) {
       title: "",
       description: "",
       locationName: "",
-      host: ""
+      host: "",
+      contact: ""
     });
     setDate(null);
     setTags([]);
@@ -174,6 +186,17 @@ export default function EventForm({ onAdd }) {
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
               />
             </div>
+          </div>
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Kontakt do organizatora</label>
+            <input
+              name="contact"
+              placeholder="E-mail lub telefon"
+              value={form.contact}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+            />
           </div>
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">Data wydarzenia</label>
@@ -243,7 +266,11 @@ export default function EventForm({ onAdd }) {
             </div>
           </div>
         </div>
-        <button type="submit" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition mt-4 w-full">
+        <button
+          type="submit"
+          className={`bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition mt-4 w-full ${!isFormValid ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+          disabled={!isFormValid}
+        >
           Dodaj
         </button>
       </div>
