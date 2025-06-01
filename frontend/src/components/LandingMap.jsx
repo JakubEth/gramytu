@@ -10,6 +10,8 @@ import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
 
+const API_URL = "https://gramytu.onrender.com";
+
 const icons = {
   planszowka: L.icon({ iconUrl: iconBoardgame, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
   komputerowa: L.icon({ iconUrl: iconComputer, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
@@ -27,7 +29,7 @@ export default function LandingMap({ events, user }) {
     if (!hostId) return fallback || "Nieznany";
     if (organizerNames[hostId]) return organizerNames[hostId];
     try {
-      const res = await fetch(`https://gramytu.onrender.com/users/${hostId}`);
+      const res = await fetch(`${API_URL}/users/${hostId}`);
       const user = await res.json();
       setOrganizerNames(names => ({ ...names, [hostId]: user.username }));
       return user.username;
@@ -123,20 +125,19 @@ export default function LandingMap({ events, user }) {
 // --- LIKE BUTTON ---
 function LikeButton({ event, user }) {
   const [likes, setLikes] = useState(event.likes || []);
-  const liked = user && likes.some(id => id === user._id || id._id === user._id);
+  const liked = user && likes.some(id => id === user._id || id?._id === user._id);
 
   const handleLike = async () => {
     if (!user) return;
     const res = await fetch(
-      `/events/${event._id}/${liked ? "unlike" : "like"}`,
+      `https://gramytu.onrender.com/events/${event._id}/${liked ? "unlike" : "like"}`,
       {
         method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       }
     );
     const data = await res.json();
-    // Prosta aktualizacja stanu (możesz dodać fetch event po zmianie)
-    if (liked) setLikes(likes.filter(id => id !== user._id && id._id !== user._id));
+    if (liked) setLikes(likes.filter(id => id !== user._id && id?._id !== user._id));
     else setLikes([...likes, user._id]);
   };
 
@@ -160,7 +161,7 @@ function CommentsSection({ event, user }) {
 
   const handleAddComment = async () => {
     if (!user || !text.trim()) return;
-    const res = await fetch(`/events/${event._id}/comment`, {
+    const res = await fetch(`https://gramytu.onrender.com/events/${event._id}/comment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -209,7 +210,7 @@ function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile 
 
   useEffect(() => {
     if (!hostId) return;
-    fetch(`https://gramytu.onrender.com/users/${hostId}`)
+    fetch(`${API_URL}/users/${hostId}`)
       .then(res => res.json())
       .then(user => setName(user.username))
       .catch(() => setName(fallback));
@@ -222,7 +223,7 @@ function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile 
       onClick={async () => {
         if (hostId) {
           try {
-            const res = await fetch(`https://gramytu.onrender.com/users/${hostId}`);
+            const res = await fetch(`${API_URL}/users/${hostId}`);
             const user = await res.json();
             setProfileUser(user);
           } catch {
