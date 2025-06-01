@@ -40,7 +40,7 @@ export default function Header({
     <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-40">
       <div className="flex items-center gap-3">
         <img src={logo} alt="Gramytu logo" className="w-10 h-10" />
-        <span className="font-bold text-2xl text-indigo-700">GramyTu</span>
+        <Link to={"/"} className="font-bold text-2xl text-indigo-700">GramyTu</Link>
       </div>
       <nav className="flex gap-6 items-center">
         <button

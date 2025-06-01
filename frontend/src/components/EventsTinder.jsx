@@ -1,9 +1,23 @@
 import { useEffect, useState } from "react";
 import TinderCard from "react-tinder-card";
 
+// Funkcja licząca dystans w km na podstawie współrzędnych
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function EventsTinder() {
   const [events, setEvents] = useState([]);
   const [lastDirection, setLastDirection] = useState(null);
+  const [userPosition, setUserPosition] = useState(null);
 
   useEffect(() => {
     fetch("https://gramytu.onrender.com/events")
@@ -11,10 +25,18 @@ export default function EventsTinder() {
       .then(setEvents);
   }, []);
 
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
+        err => setUserPosition(null)
+      );
+    }
+  }, []);
+
   const onSwipe = (direction, eventTitle) => {
     setLastDirection(direction);
     // Możesz tu dodać logikę np. polubienia/odrzucenia eventu
-    // if (direction === "right") { ... }
   };
 
   const onCardLeftScreen = (title) => {
@@ -40,8 +62,31 @@ export default function EventsTinder() {
                 backgroundImage: "linear-gradient(135deg, #e0e7ff 0%, #fff 100%)",
               }}
             >
+              {/* ZDJĘCIE WYDARZENIA */}
+              {ev.image && (
+                <img
+                  src={ev.image}
+                  alt="Zdjęcie wydarzenia"
+                  className="mb-3 rounded-lg shadow w-full object-cover"
+                  style={{ maxHeight: 160, minHeight: 120 }}
+                />
+              )}
               <div>
                 <div className="font-bold text-xl text-indigo-700 mb-1">{ev.title}</div>
+                {/* DYSTANS */}
+                {userPosition && ev.location && (
+                  <div className="text-xs text-gray-500 mb-1">
+                    {(() => {
+                      const dist = getDistanceFromLatLonInKm(
+                        userPosition[0],
+                        userPosition[1],
+                        ev.location.lat,
+                        ev.location.lng
+                      );
+                      return `~${Math.round(dist)} km od Ciebie`;
+                    })()}
+                  </div>
+                )}
                 <div className="text-xs text-gray-500 mb-2">
                   {ev.date?.slice(0, 10)} • {ev.location?.name}
                 </div>

@@ -138,8 +138,10 @@ export default function App() {
   const [showLogIn, setShowLogIn] = useState(false);
   const [user, setUser] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true); // FLAGA ŁADOWANIA
 
   useEffect(() => {
+    setLoadingUser(true); // <-- start ładowania
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
@@ -156,15 +158,20 @@ export default function App() {
               username: userFromDb.username,
               avatar: userFromDb.avatar
             });
+            setLoadingUser(false); // <-- koniec ładowania
           })
           .catch(() => {
             setUser(null);
             localStorage.removeItem("token");
+            setLoadingUser(false);
           });
       } catch {
         setUser(null);
         localStorage.removeItem("token");
+        setLoadingUser(false);
       }
+    } else {
+      setLoadingUser(false);
     }
   }, []);
 
@@ -183,6 +190,11 @@ export default function App() {
 
   // Funkcja do otwierania modala logowania
   const openLoginModal = () => setShowLogIn(true);
+
+  // OPCJONALNIE: Spinner podczas ładowania usera
+  if (loadingUser) {
+    return <div className="w-full h-screen flex items-center justify-center">Ładowanie...</div>;
+  }
 
   return (
     <>
@@ -311,7 +323,7 @@ export default function App() {
       )}
 
       {/* MODAL LOGOWANIA */}
-      {showLogIn && (
+      {!loadingUser && showLogIn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs relative">
             <button
@@ -334,7 +346,13 @@ export default function App() {
 
       {/* GLOBALNY PLUS */}
       <button
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          if (user) {
+            setShowModal(true);
+          } else {
+            setShowLogIn(true);
+          }
+        }}
         className="fixed bottom-8 right-8 z-[100] bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-4xl transition"
         aria-label="Dodaj wydarzenie"
       >
