@@ -38,7 +38,8 @@ export default function EventForm({ onAdd }) {
     description: "",
     locationName: "",
     host: "",
-    contact: ""
+    contact: "",
+    type: "", // <-- typ wydarzenia
   });
   const [position, setPosition] = useState([52.2297, 21.0122]);
   const [date, setDate] = useState(null);
@@ -83,13 +84,13 @@ export default function EventForm({ onAdd }) {
     }
   };
 
-  // WALIDACJA: wszystkie wymagane pola muszą być wypełnione
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
     form.locationName.trim() &&
     form.host.trim() &&
     form.contact.trim() &&
+    form.type.trim() &&
     date;
 
   const handleSubmit = async e => {
@@ -106,6 +107,7 @@ export default function EventForm({ onAdd }) {
       },
       host: form.host,
       contact: form.contact,
+      type: form.type, // <-- wysyłaj typ!
       tags
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
@@ -120,7 +122,8 @@ export default function EventForm({ onAdd }) {
       description: "",
       locationName: "",
       host: "",
-      contact: ""
+      contact: "",
+      type: ""
     });
     setDate(null);
     setTags([]);
@@ -197,6 +200,23 @@ export default function EventForm({ onAdd }) {
               required
               className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
             />
+          </div>
+          {/* SELECT TYP WYDARZENIA */}
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Typ wydarzenia</label>
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+            >
+              <option value="">Wybierz typ...</option>
+              <option value="planszowka">Planszówka</option>
+              <option value="komputerowa">Gra komputerowa</option>
+              <option value="fizyczna">Gra fizyczna</option>
+              <option value="inne">Coś innego</option>
+            </select>
           </div>
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">Data wydarzenia</label>
