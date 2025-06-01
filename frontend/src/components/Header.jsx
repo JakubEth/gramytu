@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import logo from "../assets/react.png";
 
-// Możesz użyć własnego SVG lub PNG, tu prosty emoji jako domyślny avatar:
-const defaultAvatar = "https://ui-avatars.com/api/?name=U&background=E0E7FF&color=3730A3&bold=true";
+// Funkcja generująca domyślny avatar na podstawie nicku
+const getDefaultAvatar = username =>
+  "https://ui-avatars.com/api/?name=" +
+  encodeURIComponent(username || "U") +
+  "&background=E0E7FF&color=3730A3&bold=true";
 
 export default function Header({
   onOpenAddEvent,
@@ -25,6 +28,11 @@ export default function Header({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
+
+  // Wybierz avatar: jeśli user.avatar istnieje, użyj go, inaczej domyślny
+  const avatarUrl = user?.avatar
+    ? user.avatar
+    : getDefaultAvatar(user?.username);
 
   return (
     <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-40">
@@ -72,7 +80,7 @@ export default function Header({
               aria-label="Profil"
             >
               <img
-                src={defaultAvatar}
+                src={avatarUrl}
                 alt="Profil"
                 className="w-full h-full object-cover"
               />

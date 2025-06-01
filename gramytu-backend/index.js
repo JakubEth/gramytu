@@ -106,6 +106,19 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Express, Mongoose
+app.patch('/users/:id', async (req, res) => {
+  const { username, password, avatar } = req.body;
+  const update = {};
+  if (username) update.username = username;
+  if (avatar) update.avatar = avatar;
+  if (password) update.password = await bcrypt.hash(password, 10);
+  const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
+  if (!user) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
+  res.json({ _id: user._id, username: user.username, avatar: user.avatar });
+});
+
+
 const PORT = process.env.PORT || 4000;
 
 mongoose.connect(process.env.MONGO_URI)
