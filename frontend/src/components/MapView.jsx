@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import logo from "../assets/logo.svg";
+import logo from "../assets/react.png";
 import EventForm from "./EventForm";
 
 // Fix ikon Leaflet w Vite
