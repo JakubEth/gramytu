@@ -12,21 +12,21 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Endpoint: pobierz wszystkie eventy
+// Pobierz wszystkie eventy
 app.get('/events', async (req, res) => {
   const events = await Event.find();
   res.json(events);
 });
 
-// Endpoint: utwórz event z hostId
+// Utwórz event (host i hostId MUSZĄ być przekazane z frontu)
 app.post('/events', async (req, res) => {
   const event = new Event({
     title: req.body.title,
     description: req.body.description,
     date: req.body.date,
     location: req.body.location,
-    host: req.body.host,
-    hostId: req.body.hostId, // <-- ważne!
+    host: req.body.host,         // <-- nick organizatora
+    hostId: req.body.hostId,     // <-- ID organizatora
     contact: req.body.contact,
     type: req.body.type,
     tags: req.body.tags,
@@ -37,7 +37,7 @@ app.post('/events', async (req, res) => {
   res.json(event);
 });
 
-// Endpoint: pobierz użytkownika po ID
+// Pobierz usera po ID
 app.get('/users/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -109,7 +109,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Edycja użytkownika + aktualizacja nicku w eventach
+// PATCH: zmiana nicku i update nicku w eventach
 app.patch('/users/:id', async (req, res) => {
   try {
     const { username, password, avatar } = req.body;
