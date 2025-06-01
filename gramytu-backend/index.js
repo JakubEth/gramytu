@@ -106,16 +106,34 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Express, Mongoose
 app.patch('/users/:id', async (req, res) => {
-  const { username, password, avatar } = req.body;
-  const update = {};
-  if (username) update.username = username;
-  if (avatar) update.avatar = avatar;
-  if (password) update.password = await bcrypt.hash(password, 10);
-  const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
-  if (!user) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
-  res.json({ _id: user._id, username: user.username, avatar: user.avatar });
+  try {
+    const { username, password, avatar } = req.body;
+    const update = {};
+    if (username) update.username = username;
+    if (avatar) update.avatar = avatar;
+    if (password) update.password = await bcrypt.hash(password, 10);
+
+    // Pobierz starego użytkownika (przed zmianą)
+    const oldUser = await User.findById(req.params.id);
+    if (!oldUser) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
+
+    // Aktualizuj eventy jeśli zmieniono nick
+    if (username && username !== oldUser.username) {
+      await Event.updateMany(
+        { host: oldUser.username },
+        { $set: { host: username } }
+      );
+    }
+
+    // Zaktualizuj użytkownika
+    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
+    res.json({ _id: user._id, username: user.username, avatar: user.avatar });
+    
+  } catch (error) {
+    console.error("Błąd aktualizacji użytkownika:", error);
+    res.status(500).json({ error: "Błąd serwera" });
+  }
 });
 
 

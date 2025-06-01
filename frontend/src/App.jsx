@@ -6,8 +6,8 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import RegisterForm from "./components/RegisterForm";
 import LoginForm from "./components/LoginForm";
+import UserProfilePage from "./components/UserProfilePage";
 import { jwtDecode } from "jwt-decode";
-
 
 function SuccessIcon() {
   return (
@@ -25,6 +25,7 @@ export default function App() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showLogIn, setShowLogIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [showProfile, setShowProfile] = useState(false); // MODAL PROFILU
 
   // Przy starcie aplikacji sprawdź token w localStorage
   useEffect(() => {
@@ -38,7 +39,8 @@ export default function App() {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        setUser({ _id: decoded.userId, username: decoded.username });
+        // Możesz tu pobierać więcej danych, jeśli masz je w tokenie
+        setUser({ _id: decoded.userId, username: decoded.username, avatar: decoded.avatar });
       } catch {
         setUser(null);
         localStorage.removeItem("token");
@@ -57,7 +59,7 @@ export default function App() {
     setUser(null);
     localStorage.removeItem("token");
   };
-  const handleProfile = () => alert("Profil (do zaimplementowania)");
+  const handleProfile = () => setShowProfile(true);
   const handleSettings = () => alert("Ustawienia (do zaimplementowania)");
 
   return (
@@ -73,6 +75,24 @@ export default function App() {
       />
       <Landing2025 events={events} />
       <Footer />
+
+      {/* MODAL PROFILU */}
+      {showProfile && user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <UserProfilePage
+            user={user}
+            onClose={() => setShowProfile(false)}
+            onUpdate={updatedUser => {
+              setUser(updatedUser);
+              // Odśwież eventy po zmianie nicku
+              fetch("https://gramytu.onrender.com/events")
+                .then(res => res.json())
+                .then(setEvents);
+            }}
+          />
+
+        </div>
+      )}
 
       {/* MODAL Z FORMULARZEM */}
       {showModal && (
