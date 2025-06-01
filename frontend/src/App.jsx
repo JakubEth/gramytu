@@ -4,6 +4,8 @@ import EventForm from "./components/EventForm";
 import Landing2025 from "./components/Landing2025";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import RegisterForm from "./components/RegisterForm";
+import LoginForm from "./components/LoginForm";
 
 // Ikona checkmarka (SVG, nie wymaga dodatkowych paczek)
 function SuccessIcon() {
@@ -19,6 +21,8 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [successEvent, setSuccessEvent] = useState(null);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [showLogIn, setShowLogIn] = useState(false);
 
   useEffect(() => {
     fetch("https://gramytu.onrender.com/events")
@@ -34,8 +38,11 @@ export default function App() {
 
   return (
     <div>
-      <RegisterForm onSuccess={user => alert(`Zarejestrowano: ${user.username}`)} />
-      <Header onOpenAddEvent={() => setShowModal(true)} />
+      <Header
+        onOpenAddEvent={() => setShowModal(true)}
+        onOpenSignUp={() => setShowSignUp(true)}
+        onOpenLogIn={() => setShowLogIn(true)}
+      />
       <Landing2025 events={events} />
       <Footer />
 
@@ -97,6 +104,38 @@ export default function App() {
             >
               Zamknij
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REJESTRACJI */}
+      {showSignUp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs relative">
+            <button
+              onClick={() => setShowSignUp(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <RegisterForm onSuccess={() => setShowSignUp(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LOGOWANIA */}
+      {showLogIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs relative">
+            <button
+              onClick={() => setShowLogIn(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <LoginForm onSuccess={() => setShowLogIn(false)} />
           </div>
         </div>
       )}

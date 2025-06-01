@@ -1,13 +1,13 @@
 import logo from "../assets/react.png";
 
-export default function Header({ onOpenAddEvent }) {
+export default function Header({ onOpenAddEvent, onOpenSignUp, onOpenLogIn }) {
   return (
     <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-40">
       <div className="flex items-center gap-3">
         <img src={logo} alt="Gramytu logo" className="w-10 h-10" />
         <span className="font-bold text-2xl text-indigo-700">GramyTu</span>
       </div>
-      <nav className="flex gap-6">
+      <nav className="flex gap-6 items-center">
         <button
           type="button"
           onClick={onOpenAddEvent}
@@ -21,6 +21,20 @@ export default function Header({ onOpenAddEvent }) {
         <a href="#about" className="hover:text-indigo-700 font-medium transition">
           O nas
         </a>
+        <button
+          type="button"
+          onClick={onOpenLogIn}
+          className="text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 rounded transition"
+        >
+          Log In
+        </button>
+        <button
+          type="button"
+          onClick={onOpenSignUp}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded transition"
+        >
+          Sign Up
+        </button>
       </nav>
     </header>
   );
