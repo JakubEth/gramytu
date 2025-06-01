@@ -1,6 +1,6 @@
 export default function Header() {
     return (
-      <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-10">
+      <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-10 z-index=300">
         <div className="flex items-center gap-3">
           <span className="text-2xl font-bold tracking-tight text-indigo-600">GramyTu</span>
         </div>

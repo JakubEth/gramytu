@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+.leaflet-container,
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-overlay-pane,
+.leaflet-popup-pane {
+  z-index: 10 !important;
+}
