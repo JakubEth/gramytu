@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import logo from "../assets/logo.svg"; // zamień na swoją ścieżkę do logo
+import logo from "../assets/logo.svg";
 
 // Fix ikon Leaflet w Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -11,12 +11,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
 });
 
-const events = [
-  { id: 1, title: "Makao w Planszówkowie", lat: 52.23, lng: 21.01, date: "2025-06-03 17:00", place: "Planszówkowo" },
-  { id: 2, title: "Terraformacja Marsa", lat: 52.22, lng: 21.03, date: "2025-06-04 18:00", place: "Café Gra" }
-];
-
-export default function MapView() {
+export default function MapView({ events = [] }) {
   return (
     <section className="relative w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-blue-100 pb-12">
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-indigo-200 mt-8"
@@ -27,10 +22,18 @@ export default function MapView() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {events.map(ev => (
-            <Marker key={ev.id} position={[ev.lat, ev.lng]}>
+            <Marker
+              key={ev._id || ev.id}
+              position={[
+                ev.location ? ev.location.lat : ev.lat,
+                ev.location ? ev.location.lng : ev.lng
+              ]}
+            >
               <Popup>
                 <div className="font-bold">{ev.title}</div>
-                <div className="text-sm">{ev.date} • {ev.place}</div>
+                <div className="text-sm">
+                  {ev.date} • {ev.location ? ev.location.name : ev.place}
+                </div>
               </Popup>
             </Marker>
           ))}
