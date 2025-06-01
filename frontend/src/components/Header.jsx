@@ -1,6 +1,31 @@
+import { useState, useRef, useEffect } from "react";
 import logo from "../assets/react.png";
 
-export default function Header({ onOpenAddEvent, onOpenSignUp, onOpenLogIn }) {
+// Możesz użyć własnego SVG lub PNG, tu prosty emoji jako domyślny avatar:
+const defaultAvatar = "https://ui-avatars.com/api/?name=U&background=E0E7FF&color=3730A3&bold=true";
+
+export default function Header({
+  onOpenAddEvent,
+  onOpenSignUp,
+  onOpenLogIn,
+  user,
+  onLogout,
+  onProfile,
+  onSettings
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const avatarRef = useRef();
+
+  // Zamykaj dropdown po kliknięciu poza
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = e => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
   return (
     <header className="w-full bg-white/90 backdrop-blur shadow flex items-center justify-between px-8 py-4 sticky top-0 z-40">
       <div className="flex items-center gap-3">
@@ -21,20 +46,61 @@ export default function Header({ onOpenAddEvent, onOpenSignUp, onOpenLogIn }) {
         <a href="#about" className="hover:text-indigo-700 font-medium transition">
           O nas
         </a>
-        <button
-          type="button"
-          onClick={onOpenLogIn}
-          className="text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 rounded transition"
-        >
-          Log In
-        </button>
-        <button
-          type="button"
-          onClick={onOpenSignUp}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded transition"
-        >
-          Sign Up
-        </button>
+        {!user ? (
+          <>
+            <button
+              type="button"
+              onClick={onOpenLogIn}
+              className="text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 rounded transition"
+            >
+              Log In
+            </button>
+            <button
+              type="button"
+              onClick={onOpenSignUp}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded transition"
+            >
+              Sign Up
+            </button>
+          </>
+        ) : (
+          <div className="relative" ref={avatarRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(o => !o)}
+              className="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-200 bg-indigo-50 flex items-center justify-center focus:outline-none"
+              aria-label="Profil"
+            >
+              <img
+                src={defaultAvatar}
+                alt="Profil"
+                className="w-full h-full object-cover"
+              />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-indigo-100 py-2 z-50 animate-fade-in">
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
+                  onClick={() => { setMenuOpen(false); onProfile && onProfile(); }}
+                >
+                  Profil
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
+                  onClick={() => { setMenuOpen(false); onSettings && onSettings(); }}
+                >
+                  Ustawienia
+                </button>
+                <button
+                  className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+                  onClick={() => { setMenuOpen(false); onLogout && onLogout(); }}
+                >
+                  Wyloguj
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </nav>
     </header>
   );

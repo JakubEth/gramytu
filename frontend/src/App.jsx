@@ -6,8 +6,8 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import RegisterForm from "./components/RegisterForm";
 import LoginForm from "./components/LoginForm";
+import jwtDecode from "jwt-decode"; // npm install jwt-decode
 
-// Ikona checkmarka (SVG, nie wymaga dodatkowych paczek)
 function SuccessIcon() {
   return (
     <svg className="w-14 h-14 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -23,18 +23,41 @@ export default function App() {
   const [successEvent, setSuccessEvent] = useState(null);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showLogIn, setShowLogIn] = useState(false);
+  const [user, setUser] = useState(null);
 
+  // Przy starcie aplikacji sprawdź token w localStorage
   useEffect(() => {
+    // Pobierz eventy
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
+
+    // Sprawdź token JWT
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUser({ _id: decoded.userId, username: decoded.username });
+      } catch {
+        setUser(null);
+        localStorage.removeItem("token");
+      }
+    }
   }, []);
 
   const handleAdd = event => {
     setEvents(e => [...e, event]);
     setShowModal(false);
-    setSuccessEvent(event); // pokaż modal z sukcesem
+    setSuccessEvent(event);
   };
+
+  // Wylogowanie
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("token");
+  };
+  const handleProfile = () => alert("Profil (do zaimplementowania)");
+  const handleSettings = () => alert("Ustawienia (do zaimplementowania)");
 
   return (
     <div>
@@ -42,6 +65,10 @@ export default function App() {
         onOpenAddEvent={() => setShowModal(true)}
         onOpenSignUp={() => setShowSignUp(true)}
         onOpenLogIn={() => setShowLogIn(true)}
+        user={user}
+        onLogout={handleLogout}
+        onProfile={handleProfile}
+        onSettings={handleSettings}
       />
       <Landing2025 events={events} />
       <Footer />
@@ -119,7 +146,13 @@ export default function App() {
             >
               ×
             </button>
-            <RegisterForm onSuccess={() => setShowSignUp(false)} />
+            <RegisterForm onSuccess={data => {
+              if (data && data.token && data.user) {
+                localStorage.setItem("token", data.token);
+                setUser(data.user);
+              }
+              setShowSignUp(false);
+            }} />
           </div>
         </div>
       )}
@@ -135,7 +168,13 @@ export default function App() {
             >
               ×
             </button>
-            <LoginForm onSuccess={() => setShowLogIn(false)} />
+            <LoginForm onSuccess={data => {
+              if (data && data.token && data.user) {
+                localStorage.setItem("token", data.token);
+                setUser(data.user);
+              }
+              setShowLogIn(false);
+            }} />
           </div>
         </div>
       )}
