@@ -6,9 +6,12 @@ require('dotenv').config();
 const { Event, User } = require('./models');
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Endpointy
 app.get('/events', async (req, res) => {
   const events = await Event.find();
   res.json(events);
@@ -26,6 +29,9 @@ app.post('/users', async (req, res) => {
   res.json(user);
 });
 
+// Poprawiona konfiguracja portu
+const PORT = process.env.PORT || 4000;
+
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => app.listen(4000, () => console.log('API on 4000')))
+  .then(() => app.listen(PORT, () => console.log(`API on ${PORT}`)))
   .catch(console.error);
