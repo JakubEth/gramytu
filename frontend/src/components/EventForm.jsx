@@ -4,7 +4,6 @@ import "leaflet/dist/leaflet.css";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import pl from "date-fns/locale/pl";
-import { TagsInput } from "react-tag-input-component";
 
 function LocationSelector({ position, setPosition }) {
   useMapEvents({
@@ -41,6 +40,7 @@ export default function EventForm({ onAdd }) {
   const [position, setPosition] = useState([52.2297, 21.0122]);
   const [date, setDate] = useState(null);
   const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
   const containerRef = useRef(null);
   const [mapSize, setMapSize] = useState(420);
 
@@ -57,6 +57,19 @@ export default function EventForm({ onAdd }) {
   }, []);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleTagKeyDown = e => {
+    if ((e.key === "Enter" || e.key === ",") && tagInput.trim() !== "") {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) {
+        setTags([...tags, tagInput.trim()]);
+      }
+      setTagInput("");
+    }
+    if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
+      setTags(tags.slice(0, -1));
+    }
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -88,6 +101,7 @@ export default function EventForm({ onAdd }) {
     });
     setDate(null);
     setTags([]);
+    setTagInput("");
     setPosition([52.2297, 21.0122]);
   };
 
@@ -95,7 +109,7 @@ export default function EventForm({ onAdd }) {
     <form
       ref={containerRef}
       onSubmit={handleSubmit}
-      className="w-full max-w-[1100px] bg-white rounded-2xl shadow-2xl flex flex-col md:flex-row gap-10 p-6 md:p-10"
+      className="w-full max-w-[1000px] bg-white rounded-2xl shadow-2xl flex flex-col md:flex-row gap-10 p-6 md:p-10"
       style={{ minHeight: 420, maxHeight: 700, overflowY: "auto" }}
     >
       {/* LEWA KOLUMNA: INPUTY */}
@@ -169,16 +183,33 @@ export default function EventForm({ onAdd }) {
           </div>
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">Tagi:</label>
-            <TagsInput
-              value={tags}
-              onChange={setTags}
-              name="tags"
-              placeHolder="Dodaj tagi"
-              classNames={{
-                input: "w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              }}
-            />
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mb-2">
+              {tags.map((tag, idx) => (
+                <span
+                  key={tag}
+                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    className="ml-1 text-indigo-700 hover:text-red-500"
+                    onClick={() => setTags(tags.filter((t, i) => i !== idx))}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                type="text"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Dodaj tag i Enter"
+                className="px-3 py-1 border rounded-full text-sm focus:border-indigo-500 outline-none"
+                style={{ minWidth: 80, maxWidth: 150 }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-1">
               {SUGGESTED_TAGS.map(tag => (
                 <button
                   type="button"
