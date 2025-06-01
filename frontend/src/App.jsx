@@ -20,38 +20,47 @@ export default function App() {
   return (
     <div>
       <Header onOpenAddEvent={() => setShowModal(true)} />
-      <MapView events={events} onAddEvent={handleAdd} />
-      <Landing2025 />
+      <Landing2025 events={events} />
       <Footer />
 
+      {/* MODAL Z FORMULARZEM */}
       {showModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div
-          className="bg-white rounded-2xl shadow-2xl p-6 w-full"
-          style={{
-            maxWidth: "1000px",      // szerokość modala na desktopie
-            width: "90vw",           // responsywność na mniejszych ekranach
-            maxHeight: "90vh",       // nie wyjdzie poza ekran
-            overflowY: "auto",
-            position: "relative"
-          }}
-        >
-          <button
-            onClick={() => setShowModal(false)}
-            className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-            aria-label="Zamknij"
-          >
-            ×
-          </button>
-          <EventForm
-            onAdd={event => {
-              onAddEvent(event);
-              setShowModal(false);
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 w-full"
+            style={{
+              maxWidth: "1000px",
+              width: "90vw",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative"
             }}
-          />
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <EventForm
+              onAdd={event => {
+                handleAdd(event);
+                setShowModal(false);
+              }}
+            />
+          </div>
         </div>
-      </div>
-    )}
+      )}
+
+      {/* GLOBALNY PLUS */}
+      <button
+        onClick={() => setShowModal(true)}
+        className="fixed bottom-8 right-8 z-[100] bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-4xl transition"
+        aria-label="Dodaj wydarzenie"
+      >
+        +
+      </button>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -12,6 +12,65 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
 });
+
+function EventStats({ events }) {
+  const total = events.length;
+
+  const uniquePlaces = useMemo(
+    () => new Set(events.map(e => e.location?.name?.toLowerCase() || "")).size,
+    [events]
+  );
+  const uniqueHosts = useMemo(
+    () => new Set(events.map(e => e.host?.toLowerCase() || "")).size,
+    [events]
+  );
+  const allTags = events.flatMap(e => e.tags || []);
+  const uniqueTags = [...new Set(allTags.map(t => t.toLowerCase()))];
+  const tagCounts = allTags.reduce((acc, tag) => {
+    acc[tag] = (acc[tag] || 0) + 1;
+    return acc;
+  }, {});
+  const mostPopularTag = uniqueTags.sort((a, b) => (tagCounts[b] || 0) - (tagCounts[a] || 0))[0];
+
+  const now = new Date();
+  const upcoming = events
+    .map(e => ({ ...e, dateObj: new Date(e.date) }))
+    .filter(e => e.dateObj > now)
+    .sort((a, b) => a.dateObj - b.dateObj)[0];
+
+  return (
+    <section className="w-full max-w-5xl mx-auto mt-8 mb-12">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatBox label="Wydarzenia" value={total} />
+        <StatBox label="Miejscówki" value={uniquePlaces} />
+        <StatBox label="Organizatorzy" value={uniqueHosts} />
+        <StatBox label="Tagi" value={uniqueTags.length} />
+        <StatBox label="Najpopularniejszy tag" value={mostPopularTag || "-"} />
+        <StatBox
+          label="Najbliższe wydarzenie"
+          value={
+            upcoming
+              ? <>
+                  <span className="font-semibold">{upcoming.title}</span>
+                  <br />
+                  <span className="text-xs text-gray-500">{upcoming.date?.slice(0, 10)}</span>
+                </>
+              : "-"
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function StatBox({ label, value }) {
+  return (
+    <div className="bg-white rounded-xl shadow flex flex-col items-center justify-center py-6 px-3">
+      <div className="text-2xl font-bold text-indigo-700">{value}</div>
+      <div className="text-xs text-gray-500 mt-1 text-center">{label}</div>
+    </div>
+  );
+}
 
 export default function MapView({ events = [], onAddEvent }) {
   const [showModal, setShowModal] = useState(false);
@@ -56,6 +115,9 @@ export default function MapView({ events = [], onAddEvent }) {
         <span className="font-bold text-lg text-indigo-700">Odkrywaj planszówkowe eventy w Twojej okolicy!</span>
       </div>
 
+      {/* Statystyki pod mapą */}
+      <EventStats events={events} />
+
       {/* Plus w prawym dolnym rogu */}
       <button
         onClick={() => setShowModal(true)}
@@ -67,36 +129,33 @@ export default function MapView({ events = [], onAddEvent }) {
 
       {/* Modal z formularzem */}
       {showModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div
-          className="bg-white rounded-2xl shadow-2xl p-6 w-full"
-          style={{
-            maxWidth: "1000px",      // szerokość modala na desktopie
-            width: "90vw",           // responsywność na mniejszych ekranach
-            maxHeight: "90vh",       // nie wyjdzie poza ekran
-            overflowY: "auto",
-            position: "relative"
-          }}
-        >
-          <button
-            onClick={() => setShowModal(false)}
-            className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-            aria-label="Zamknij"
-          >
-            ×
-          </button>
-          <EventForm
-            onAdd={event => {
-              onAddEvent(event);
-              setShowModal(false);
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 w-full"
+            style={{
+              maxWidth: "1000px",
+              width: "90vw",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative"
             }}
-          />
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <EventForm
+              onAdd={event => {
+                onAddEvent(event);
+                setShowModal(false);
+              }}
+            />
+          </div>
         </div>
-      </div>
-    )}
-
-
-
+      )}
     </section>
   );
 }
