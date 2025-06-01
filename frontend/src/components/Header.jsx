@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/react.png";
 
 // Funkcja generująca domyślny avatar na podstawie nicku
@@ -18,6 +19,7 @@ export default function Header({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarRef = useRef();
+  const navigate = useNavigate();
 
   // Zamykaj dropdown po kliknięciu poza
   useEffect(() => {
@@ -43,14 +45,33 @@ export default function Header({
       <nav className="flex gap-6 items-center">
         <button
           type="button"
-          onClick={onOpenAddEvent}
           className="hover:text-indigo-700 font-medium transition bg-transparent border-none outline-none cursor-pointer"
+          onClick={() => {
+            if (user) {
+              onOpenAddEvent();
+            } else {
+              onOpenLogIn();
+            }
+          }}
         >
           Dodaj wydarzenie
         </button>
-        <a href="#events" className="hover:text-indigo-700 font-medium transition">
+        <Link to="/events" className="hover:text-indigo-700 font-medium transition">
           Przeglądaj wydarzenia
-        </a>
+        </Link>
+        <button
+          type="button"
+          className="hover:text-indigo-700 font-medium transition bg-transparent border-none outline-none cursor-pointer"
+          onClick={() => {
+            if (user) {
+              navigate("/events/swipe");
+            } else {
+              onOpenLogIn();
+            }
+          }}
+        >
+          Swipe'uj wydarzenia
+        </button>
         <a href="#about" className="hover:text-indigo-700 font-medium transition">
           O nas
         </a>

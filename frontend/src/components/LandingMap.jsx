@@ -16,9 +16,10 @@ const icons = {
 };
 
 export default function LandingMap({ events }) {
+    console.log(events);
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
-  const [organizerNames, setOrganizerNames] = useState({}); // cache nicków
+  const [organizerNames, setOrganizerNames] = useState({});
 
   // Funkcja do pobierania nicku organizatora po hostId
   const getOrganizerName = async (hostId, fallback) => {
@@ -56,6 +57,15 @@ export default function LandingMap({ events }) {
           >
             <Popup>
               <div className="min-w-[210px] max-w-[260px] p-2">
+                {/* ZDJĘCIE WYDARZENIA */}
+                {ev.image && (
+                  <img
+                    src={ev.image}
+                    alt="Zdjęcie wydarzenia"
+                    className="mb-2 rounded-lg shadow w-full object-cover"
+                    style={{ maxHeight: 120 }}
+                  />
+                )}
                 <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
                 <div className="text-xs text-gray-500 mb-2">
                   {ev.date?.slice(0, 10)} • {ev.location?.name}

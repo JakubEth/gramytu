@@ -5,6 +5,14 @@ import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import pl from "date-fns/locale/pl";
 
+// Domyślne zdjęcia dla kategorii
+const DEFAULT_IMAGES = {
+  planszowka: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+  komputerowa: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80",
+  fizyczna: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=600&q=80",
+  inne: "https://images.unsplash.com/photo-1503676382389-4809596d5290?auto=format&fit=crop&w=600&q=80"
+};
+
 function LocationSelector({ position, setPosition }) {
   useMapEvents({
     click(e) {
@@ -44,6 +52,8 @@ export default function EventForm({ onAdd, user }) {
   const [date, setDate] = useState(null);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  const [image, setImage] = useState(null); // base64 lub url
+  const [imagePreview, setImagePreview] = useState(null);
   const containerRef = useRef(null);
   const [mapSize, setMapSize] = useState(420);
 
@@ -83,6 +93,29 @@ export default function EventForm({ onAdd, user }) {
     }
   };
 
+  // Obsługa zdjęcia
+  const handleImageChange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        setImage(ev.target.result); // base64
+        setImagePreview(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImage(null);
+      setImagePreview(null);
+    }
+  };
+
+  // Zmień podgląd na domyślny jeśli nie ma własnego zdjęcia
+  useEffect(() => {
+    if (!image && form.type) {
+      setImagePreview(DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne);
+    }
+  }, [form.type, image]);
+
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
@@ -91,7 +124,7 @@ export default function EventForm({ onAdd, user }) {
     form.type.trim() &&
     date &&
     user?.username &&
-    user?._id; // wymagane!
+    user?._id;
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -105,11 +138,12 @@ export default function EventForm({ onAdd, user }) {
         lat: position[0],
         lng: position[1]
       },
-      host: user.username, // <-- nick organizatora
-      hostId: user._id,    // <-- ID organizatora (KLUCZOWE!)
+      host: user.username,
+      hostId: user._id,
       contact: form.contact,
       type: form.type,
-      tags
+      tags,
+      image: image || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne // <-- tu zdjęcie
     };
     const res = await fetch("https://gramytu.onrender.com/events", {
       method: "POST",
@@ -128,6 +162,8 @@ export default function EventForm({ onAdd, user }) {
     setDate(null);
     setTags([]);
     setTagInput("");
+    setImage(null);
+    setImagePreview(null);
     setPosition([52.2297, 21.0122]);
   };
 
@@ -277,6 +313,26 @@ export default function EventForm({ onAdd, user }) {
                   {tag}
                 </button>
               ))}
+            </div>
+          </div>
+          <div className="mb-2">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">Zdjęcie wydarzenia</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+            <div className="mt-2">
+              <img
+                src={imagePreview || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne}
+                alt="Podgląd zdjęcia"
+                className="rounded-lg shadow w-full max-w-xs object-cover"
+                style={{ maxHeight: 180 }}
+              />
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Jeśli nie dodasz własnego zdjęcia, zostanie wybrane domyślne dla kategorii.
             </div>
           </div>
         </div>
