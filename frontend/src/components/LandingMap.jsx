@@ -9,7 +9,7 @@ import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
-import { io } from "socket.io-client";
+import { io } from "socket.io-client/dist/socket.io.js";
 
 const API_URL = "https://gramytu.onrender.com";
 const SOCKET_URL = API_URL;
