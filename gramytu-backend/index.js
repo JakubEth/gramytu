@@ -162,12 +162,21 @@ app.get('/users/:id', async (req, res) => {
       username: user.username,
       email: user.email,
       avatar: user.avatar || null,
-      createdAt: user.createdAt // <-- DODAJ TO!
+      createdAt: user.createdAt,
+      // DODAJ PREFERENCJE I MBTI:
+      mbtiType: user.mbtiType || null,
+      isAdult: user.isAdult ?? null,
+      favoriteEventType: user.favoriteEventType || null,
+      preferredEventSize: user.preferredEventSize || null,
+      preferredCategories: user.preferredCategories || [],
+      preferredTags: user.preferredTags || [],
+      preferredMode: user.preferredMode || null
     });
   } catch (error) {
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
+
 
 
 

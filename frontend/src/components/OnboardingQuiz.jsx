@@ -86,6 +86,26 @@ const mbtiQuestions = [
   { question: "Lubię mieć jasno określone zasady i struktury.", dimension: "JP" }
 ];
 
+// Opisy typów MBTI
+const mbtiDescriptions = {
+  ENFP: "Inspirator – kreatywny, entuzjastyczny, motywuje innych do działania.",
+  ISTJ: "Logistyk – zorganizowany, odpowiedzialny, praktyczny.",
+  INFJ: "Doradca – wrażliwy, lojalny, idealista.",
+  INTJ: "Architekt – niezależny, analityczny, wizjoner.",
+  INFP: "Mediator – empatyczny, lojalny, idealista.",
+  ENFJ: "Protagonista – charyzmatyczny, opiekuńczy, inspiruje innych.",
+  ENTJ: "Dowódca – zdecydowany, lider, strateg.",
+  ENTP: "Dyskutant – pomysłowy, błyskotliwy, lubi debatować.",
+  ISFJ: "Obrońca – lojalny, troskliwy, sumienny.",
+  ISFP: "Poszukiwacz przygód – wrażliwy, artystyczny, spontaniczny.",
+  ISTP: "Wirtuoz – praktyczny, elastyczny, lubi eksperymentować.",
+  ESTP: "Przedsiębiorca – energiczny, towarzyski, praktyczny.",
+  ESTJ: "Dyrektor – zorganizowany, odpowiedzialny, konkretny.",
+  ESFJ: "Konsul – serdeczny, opiekuńczy, społeczny.",
+  ESFP: "Animator – entuzjastyczny, spontaniczny, lubi zabawę.",
+  // Dodaj pozostałe jeśli chcesz
+};
+
 export default function OnboardingQuiz({ onUserUpdate }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,6 +123,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
   const [mbtiAnswers, setMbtiAnswers] = useState(Array(mbtiQuestions.length).fill(null));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mbtiType, setMbtiType] = useState(null);
 
   function handlePrefSelect(type, value, multi, max) {
     setPrefAnswers(a => {
@@ -162,11 +183,12 @@ export default function OnboardingQuiz({ onUserUpdate }) {
   async function submitAll() {
     setLoading(true);
     setError("");
-    const mbtiType = calculateMBTI();
+    const mbti = calculateMBTI();
+    setMbtiType(mbti); // zapisz typ, żeby pokazać na ekranie sukcesu
     try {
       const body = {
         ...prefAnswers,
-        mbtiType,
+        mbtiType: mbti,
         isAdult: prefAnswers.isAdult === "Tak"
       };
       if (Array.isArray(body.preferredCategories) && body.preferredCategories.length === 0) {
@@ -183,8 +205,9 @@ export default function OnboardingQuiz({ onUserUpdate }) {
       });
 
       if (!res.ok) throw new Error("Błąd zapisu");
-      if (onUserUpdate) await onUserUpdate(); // CZEKAJ na update!
-      navigate("/");
+      if (onUserUpdate) await onUserUpdate();
+      setStep(preferenceQuestions.length + mbtiQuestions.length); // przejdź do ekranu sukcesu
+      setLoading(false);
     } catch {
       setError("Błąd połączenia z serwerem.");
       setLoading(false);
@@ -192,7 +215,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
   }
 
   async function handleSkip() {
-    if (onUserUpdate) await onUserUpdate(); // CZEKAJ na update!
+    if (onUserUpdate) await onUserUpdate();
     navigate("/");
   }
 
@@ -200,6 +223,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
   const stepTotal = preferenceQuestions.length + mbtiQuestions.length;
   const progress = Math.round((step + 1) / stepTotal * 100);
 
+  // Preferencje
   if (step < preferenceQuestions.length) {
     const q = preferenceQuestions[step];
     const selected = prefAnswers[q.type] || (q.multi ? [] : "");
@@ -267,6 +291,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
     );
   }
 
+  // MBTI
   const mbtiStep = step - preferenceQuestions.length;
   if (mbtiStep < mbtiQuestions.length) {
     const q = mbtiQuestions[mbtiStep];
@@ -317,6 +342,32 @@ export default function OnboardingQuiz({ onUserUpdate }) {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // EKRAN SUKCESU
+  if (step === preferenceQuestions.length + mbtiQuestions.length && mbtiType) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-400 via-indigo-100 to-amber-100">
+        <div className="bg-white rounded-3xl shadow-2xl p-10 flex flex-col items-center max-w-xl w-full">
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-3xl font-bold text-indigo-700 mb-2">Gratulacje!</h1>
+          <p className="text-lg text-gray-700 mb-6">Ukończyłeś quiz onboardingowy.</p>
+          <div className="text-2xl font-extrabold text-amber-500 mb-2">
+            Twój typ osobowości: <span className="text-indigo-700">{mbtiType}</span>
+          </div>
+          <div className="text-md text-gray-600 text-center mb-6">
+            {mbtiDescriptions[mbtiType] || "Jesteś wyjątkowy! Odkryj wydarzenia dopasowane do Twojej osobowości."}
+          </div>
+          <button
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl text-lg font-bold shadow transition"
+            onClick={() => navigate("/")}
+          >
+            Przejdź do strony głównej
+          </button>
+          <div className="text-xs text-gray-400 mt-4">(Możesz wrócić do quizu z poziomu profilu)</div>
         </div>
       </div>
     );

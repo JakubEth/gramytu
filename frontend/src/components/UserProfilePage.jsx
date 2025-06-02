@@ -1,26 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { FaCamera, FaCheckCircle, FaInstagram, FaFacebook, FaDiscord, FaTrophy, FaTimes } from "react-icons/fa";
+import { FaCamera, FaInstagram, FaFacebook, FaDiscord } from "react-icons/fa";
 
 const defaultAvatar = username =>
   "https://ui-avatars.com/api/?name=" +
   encodeURIComponent(username || "U") +
   "&background=E0E7FF&color=3730A3&bold=true";
-
-const sampleAchievements = [
-  { icon: <FaTrophy className="text-yellow-500" />, label: "Super Organizator" },
-  { icon: <FaTrophy className="text-green-500" />, label: "Aktywny Gracz" },
-  { icon: <FaTrophy className="text-blue-500" />, label: "Nowy Użytkownik" },
-];
-const sampleActivities = [
-  "Dołączył do wydarzenia „Planszówkowy Piątek”",
-  "Polubił wydarzenie „Turniej FIFA”",
-  "Skomentował: „Świetna atmosfera!”",
-];
-const sampleRecommendations = [
-  "Hackathon 2025",
-  "Meetup planszówkowy",
-  "LAN Party Kraków",
-];
 
 export default function UserProfilePage({ user, onUpdate }) {
   const [edit, setEdit] = useState(false);
@@ -108,38 +92,90 @@ export default function UserProfilePage({ user, onUpdate }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #e0e7ff 0%, #fff 50%, #ede9fe 100%)", display: "flex", justifyContent: "center", padding: "48px 8px" }}>
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #e0e7ff 0%, #fff 50%, #ede9fe 100%)",
+      display: "flex",
+      justifyContent: "center",
+      padding: "48px 8px"
+    }}>
       {/* LEWY BANER */}
-      <div style={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center", marginRight: 32 }}>
-        <div style={{ background: "#000", border: "2px solid #d1d5db", borderRadius: 24, boxShadow: "0 8px 32px #0002", height: 600, width: 144, margin: "32px 0", overflow: "hidden", position: "relative" }}>
-          <a href="https://worldoftanks.eu/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 0, width: "100%", height: "100%", transition: "transform .2s" }}>
+      <div style={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center", margin: "32px 0" }}>
+  <div style={{
+    width: 160,
+    height: 600,
+    background: "#000",
+    border: "2px solid #d1d5db",
+    borderRadius: 24,
+    boxShadow: "0 8px 32px #0002",
+    overflow: "hidden",
+    position: "relative"
+  }}>
+    <div id="Video98811972Container" style={{ width: "100%", height: "100%" }}>
+      <video
+        id="Video_98811972"
+        preload="none"
+        poster="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.png"
+        width="100%"
+        height="100%"
+        autoPlay
+        loop
+        muted
+        playsInline
+        webkit-playsinline="true"
+        style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+      >
+        <source src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.mp4" type="video/mp4" />
+        <p>
+          <a
+            href="http://dotcomconsultancy.advertserve.com/servlet/click/zone?zid=8&cid=1756&mid=4073&pid=0&sid=13&uuid=bb552a497cffc0161b11a3d58f697df0&consent=true&ip=45.134.212.84&default=false&random=98811972&timestamp=20250602212241&test=false&resolution=1440x785&referrer=https%3A%2F%2Fblackhatworld.com%2F&redirect=https%3A%2F%2Fdolphin-anty.com%2F%3Futm_source%3Dmedia%26utm_medium%3Dpartners%26utm_campaign%3Dbhw20%26utm_content%3Dbanner"
+            target="_blank"
+            rel="nofollow"
+          >
             <img
-              src="https://media1.tenor.com/m/Qbcq1_dwWfQAAAAd/amx-airlines-wot.gif"
-              alt="World of Tanks"
-              style={{ width: "100%", height: 240, objectFit: "cover" }}
+              src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.png"
+              border="0"
+              width="160"
+              height="600"
+              alt=""
+              style={{ display: "block" }}
             />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: 8 }}>
-              <span style={{ fontWeight: 800, color: "#fde047", fontSize: 20, textAlign: "center", textShadow: "0 2px 8px #0008", animation: "pulse 1s infinite" }}>World of Tanks</span>
-              <span style={{ fontSize: 12, color: "#e5e7eb", marginTop: 4, textAlign: "center" }}>Zagraj za darmo! <br /> Czołgi, wybuchy, akcja!</span>
-              <button style={{ marginTop: 12, background: "#fde047", color: "#000", fontWeight: 700, padding: "4px 16px", borderRadius: 8, boxShadow: "0 2px 8px #0002", animation: "bounce 1s infinite" }}>
-                ZAGRAJ
-              </button>
-            </div>
           </a>
-          <span style={{ position: "absolute", top: 8, right: 8, background: "#dc2626", color: "#fff", fontSize: 12, padding: "2px 8px", borderRadius: 8, animation: "pulse 1s infinite", zIndex: 10 }}>REKLAMA</span>
-        </div>
-      </div>
+        </p>
+      </video>
+    </div>
+  </div>
+</div>
+
 
       {/* KARTA PROFILU */}
-      <div style={{ flex: 1, background: "rgba(255,255,255,0.9)", borderRadius: 32, boxShadow: "0 8px 32px #0002", padding: 40, maxWidth: 800, margin: "0 32px", display: "flex", flexDirection: "column", gap: 40 }}>
-        {/* ...cała zawartość profilu jak wcześniej... */}
+      <div style={{
+        flex: 1,
+        background: "rgba(255,255,255,0.9)",
+        borderRadius: 32,
+        boxShadow: "0 8px 32px #0002",
+        padding: 40,
+        maxWidth: 800,
+        margin: "0 32px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 40
+      }}>
         <div style={{ display: "flex", flexDirection: "row", gap: 40, alignItems: "flex-start" }}>
           {/* Avatar i upload */}
           <div style={{ position: "relative" }}>
             <img
               src={avatarPreview || defaultAvatar(user?.username)}
               alt="Profil"
-              style={{ width: 160, height: 160, borderRadius: "50%", border: "8px solid #e0e7ff", objectFit: "cover", boxShadow: "0 4px 16px #0002", transition: "transform .3s" }}
+              style={{
+                width: 160,
+                height: 160,
+                borderRadius: "50%",
+                border: "8px solid #e0e7ff",
+                objectFit: "cover",
+                boxShadow: "0 4px 16px #0002",
+                transition: "transform .3s"
+              }}
             />
             {edit && (
               <>
@@ -153,7 +189,19 @@ export default function UserProfilePage({ user, onUpdate }) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
-                  style={{ position: "absolute", bottom: 8, right: 8, background: "#4f46e5", color: "#fff", borderRadius: "50%", padding: 12, boxShadow: "0 2px 8px #0002", opacity: 0.9, border: "none", cursor: "pointer" }}
+                  style={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 8,
+                    background: "#4f46e5",
+                    color: "#fff",
+                    borderRadius: "50%",
+                    padding: 12,
+                    boxShadow: "0 2px 8px #0002",
+                    opacity: 0.9,
+                    border: "none",
+                    cursor: "pointer"
+                  }}
                   aria-label="Zmień zdjęcie profilowe"
                   disabled={loading}
                 >
@@ -166,9 +214,26 @@ export default function UserProfilePage({ user, onUpdate }) {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <h1 style={{ fontSize: 32, fontWeight: 800, color: "#3730a3" }}>{user?.username || "Użytkownik"}</h1>
-              <span style={{ background: "#e0e7ff", color: "#3730a3", fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 12 }}>ID: {user?._id}</span>
+              <span style={{
+                background: "#e0e7ff",
+                color: "#3730a3",
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "4px 12px",
+                borderRadius: 12
+              }}>ID: {user?._id}</span>
             </div>
-            <p style={{ color: "#52525b", fontSize: 18 }}>Email: <span style={{ fontWeight: 500 }}>{user?.email}</span></p>
+            <p style={{ color: "#52525b", fontSize: 18 }}>
+              Email: <span style={{ fontWeight: 500 }}>{user?.email || <span style={{ color: "#a1a1aa" }}>Nie podano</span>}</span>
+            </p>
+            <div style={{ marginTop: 8 }}>
+              <span style={{ fontWeight: 700, color: "#3730a3" }}>Typ osobowości MBTI: </span>
+              <span style={{ fontWeight: 500 }}>
+                {user?.mbtiType
+                  ? user.mbtiType
+                  : <span style={{ color: "#a1a1aa" }}>Nie uzupełniono</span>}
+              </span>
+            </div>
             <div style={{ display: "flex", gap: 12, fontSize: 24, marginTop: 8 }}>
               <a href={user.instagram || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#e1306c" }}><FaInstagram /></a>
               <a href={user.facebook || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#1877f2" }}><FaFacebook /></a>
@@ -176,7 +241,16 @@ export default function UserProfilePage({ user, onUpdate }) {
             </div>
             <div style={{ marginTop: 16 }}>
               <button
-                style={{ background: "linear-gradient(to right, #4f46e5, #3730a3)", color: "#fff", fontWeight: 700, padding: "12px 32px", borderRadius: 16, boxShadow: "0 2px 8px #0002", fontSize: 18, cursor: "pointer" }}
+                style={{
+                  background: "linear-gradient(to right, #4f46e5, #3730a3)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  padding: "12px 32px",
+                  borderRadius: 16,
+                  boxShadow: "0 2px 8px #0002",
+                  fontSize: 18,
+                  cursor: "pointer"
+                }}
                 onClick={() => setEdit(true)}
                 disabled={edit}
               >
@@ -189,30 +263,61 @@ export default function UserProfilePage({ user, onUpdate }) {
             </div>
           </div>
         </div>
-        {/* Statystyki, osiągnięcia, aktywności, rekomendacje, ustawienia */}
-        {/* ...tu możesz wkleić resztę swoich sekcji jak w poprzednich kodach... */}
+        {/* ...tu możesz dodać resztę sekcji profilu... */}
+        <div style={{ color: "#a1a1aa", fontSize: 12, textAlign: "center" }}>
+          &copy; {new Date().getFullYear()} GramyTu. Design na miarę startupu 2025 🚀
+        </div>
       </div>
 
       {/* PRAWY BANER */}
-      <div style={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center", marginLeft: 32 }}>
-        <div style={{ background: "#fff", border: "2px solid #d1d5db", borderRadius: 24, boxShadow: "0 8px 32px #0002", height: 600, width: 144, margin: "32px 0", overflow: "hidden", position: "relative" }}>
-          <a href="https://worldoftanks.eu/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 0, width: "100%", height: "100%", transition: "transform .2s" }}>
+      <div style={{ width: 160, display: "flex", flexDirection: "column", alignItems: "center", margin: "32px 0" }}>
+  <div style={{
+    width: 160,
+    height: 600,
+    background: "#000",
+    border: "2px solid #d1d5db",
+    borderRadius: 24,
+    boxShadow: "0 8px 32px #0002",
+    overflow: "hidden",
+    position: "relative"
+  }}>
+    <div id="Video22477047Container" style={{ width: "100%", height: "100%" }}>
+      <video
+        id="Video_22477047"
+        preload="none"
+        poster="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.png"
+        width="100%"
+        height="100%"
+        autoPlay
+        loop
+        muted
+        playsInline
+        webkit-playsinline="true"
+        style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+      >
+        <source src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.mp4" type="video/mp4" />
+        <p>
+          <a
+            href="http://dotcomconsultancy.advertserve.com/servlet/click/zone?zid=7&cid=1768&mid=4086&pid=0&sid=13&uuid=bb552a497cffc0161b11a3d58f697df0&consent=true&ip=45.134.212.84&default=false&random=22477047&timestamp=20250602212241&test=false&resolution=1440x785&referrer=https%3A%2F%2Fblackhatworld.com%2F&redirect=https%3A%2F%2Fproxidize.com%2Fproxy-server%2Fmobile-proxies%2F%3Futm_source%3Dblackhatworld.com%26utm_medium%3Dbanner%26utm_campaign%3DBHW%2BBanner%2B6B%26utm_id%3Dblackhatworld.com"
+            target="_blank"
+            rel="nofollow"
+          >
             <img
-              src="https://media1.tenor.com/m/7UbZGL4aHWcAAAAd/tyler-booty.gif"
-              alt="World of Tanks Banner"
-              style={{ width: "100%", height: 240, objectFit: "cover" }}
+              src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.png"
+              border="0"
+              width="160"
+              height="600"
+              alt=""
+              style={{ display: "block" }}
             />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: 8 }}>
-              <span style={{ fontWeight: 800, color: "#3730a3", fontSize: 20, textAlign: "center", textShadow: "0 2px 8px #0008", animation: "pulse 1s infinite" }}>Zagraj w League of Legends!</span>
-              <span style={{ fontSize: 12, color: "#52525b", marginTop: 4, textAlign: "center" }}>Nowe postacie, nowe mapy, darmowe nagrody!</span>
-              <button style={{ marginTop: 12, background: "#3730a3", color: "#fff", fontWeight: 700, padding: "4px 16px", borderRadius: 8, boxShadow: "0 2px 8px #0002", animation: "bounce 1s infinite" }}>
-                ZAREJESTRUJ SIĘ
-              </button>
-            </div>
           </a>
-          <span style={{ position: "absolute", top: 8, right: 8, background: "#dc2626", color: "#fff", fontSize: 12, padding: "2px 8px", borderRadius: 8, animation: "pulse 1s infinite", zIndex: 10 }}>REKLAMA</span>
-        </div>
-      </div>
+        </p>
+      </video>
+    </div>
+  </div>
+</div>
+
+
     </div>
   );
 }

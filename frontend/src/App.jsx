@@ -158,8 +158,11 @@ export default function App() {
         setUser({
           _id: userFromDb._id,
           username: userFromDb.username,
-          avatar: userFromDb.avatar
+          avatar: userFromDb.avatar,
+          email: userFromDb.email,         // <-- DODAJ TO!
+          mbtiType: userFromDb.mbtiType    // (możesz dodać inne pola też)
         });
+        
       } catch {
         setUser(null);
         localStorage.removeItem("token");
