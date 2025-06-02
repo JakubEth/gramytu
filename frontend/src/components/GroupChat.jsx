@@ -1,18 +1,34 @@
 import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
-import "./GroupChat.css";
 
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
-function formatDate(dateStr) {
+function formatTime(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return (
-    d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) +
-    ", " +
-    d.toLocaleDateString("pl-PL")
-  );
+  return d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+}
+
+const defaultAvatar = username =>
+  "https://ui-avatars.com/api/?name=" +
+  encodeURIComponent(username || "U") +
+  "&background=E0E7FF&color=3730A3&bold=true";
+
+// Funkcja sprawdzająca, czy wiadomość jest pierwsza w grupie (serii)
+function isFirstInGroup(messages, idx) {
+  if (idx === 0) return true;
+  const prev = messages[idx - 1];
+  const curr = messages[idx];
+
+  const sameUser =
+    prev.userId === curr.userId ||
+    (prev.userId?._id && prev.userId?._id === curr.userId?._id);
+  const prevTime = new Date(prev.createdAt).getTime();
+  const currTime = new Date(curr.createdAt).getTime();
+  const closeInTime = Math.abs(currTime - prevTime) < 2 * 60 * 1000; // 2 minuty
+
+  return !(sameUser && closeInTime);
 }
 
 export default function GroupChat({ eventId, user }) {
@@ -21,6 +37,9 @@ export default function GroupChat({ eventId, user }) {
   const [showGiphy, setShowGiphy] = useState(false);
   const [gifs, setGifs] = useState([]);
   const [gifSearch, setGifSearch] = useState("");
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, msg: null });
+  const [deleteModal, setDeleteModal] = useState({ open: false, msg: null });
+  const [selectedMsgId, setSelectedMsgId] = useState(null);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -72,6 +91,17 @@ export default function GroupChat({ eventId, user }) {
     }
     prevLastMsgId.current = lastMsg ? lastMsg._id : undefined;
   }, [messages, eventId]);
+
+  // Zamykaj menu po kliknięciu poza nim i zdejmuj podświetlenie
+  useEffect(() => {
+    if (!contextMenu.visible) return;
+    const close = () => {
+      setContextMenu({ ...contextMenu, visible: false });
+      setSelectedMsgId(null);
+    };
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [contextMenu.visible]);
 
   // GIPHY obsługa przez backend proxy
   const fetchGifs = async (query) => {
@@ -127,53 +157,171 @@ export default function GroupChat({ eventId, user }) {
     return <div>{msg.text}</div>;
   }
 
-  const handleRightClick = (e, msg) => {
-    e.preventDefault();
-    if (window.confirm("Usunąć tę wiadomość?")) {
-      fetch(`${API_URL}/events/${eventId}/chat/${msg._id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      }).then(res => {
-        if (res.ok) {
-          setMessages(prev => prev.filter(m => m._id !== msg._id));
-          socketRef.current.emit("deleteMessage", msg._id);
-        }
-      });
-    }
-  };
+  // Dropdown menu actions
+  function handleCopyText(msg) {
+    navigator.clipboard.writeText(
+      msg.text.startsWith("<GIF>") ? "" : msg.text
+    );
+  }
+
+  function handleReply(msg) {
+    alert("Odpowiedz na: " + (msg.text.startsWith("<GIF>") ? "[GIF]" : msg.text));
+  }
+
+  function handleEdit(msg) {
+    alert("Edytuj (do zaimplementowania)");
+  }
+
+  function handlePin(msg) {
+    alert("Przypnij (do zaimplementowania)");
+  }
+
+  // Modal usuwania
+  function handleDelete(msg) {
+    setDeleteModal({ open: true, msg });
+  }
+
+  function confirmDelete() {
+    if (!deleteModal.msg) return;
+    fetch(`${API_URL}/events/${eventId}/chat/${deleteModal.msg._id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    }).then(res => {
+      if (res.ok) {
+        setMessages(prev => prev.filter(m => m._id !== deleteModal.msg._id));
+        socketRef.current.emit("deleteMessage", deleteModal.msg._id);
+      }
+      setDeleteModal({ open: false, msg: null });
+    });
+  }
 
   return (
     <div className="flex flex-col h-full relative">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div
-        className="chatbox-messages overflow-y-auto flex-1 pr-1"
+        className="overflow-y-auto flex-1 pr-1"
         style={{ overflowAnchor: "none", paddingBottom: 64 }}
       >
-        {(!messages || messages.length === 0) && (
-          <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
-        )}
-        {Array.isArray(messages) && messages.map((msg, i) => {
-          const isMine = user && (msg.userId === user._id || msg.userId?._id === user._id);
-          return (
-            <div
-              key={msg._id || i}
-              className={`chatbox-row ${isMine ? "me" : "other"}`}
-              onContextMenu={isMine ? (e) => handleRightClick(e, msg) : undefined}
-              title={isMine ? "Prawy klik by usunąć" : undefined}
-              style={{ userSelect: "text" }}
-            >
-              <div className={`chatbox-bubble${isMine ? " me" : ""}`}>
-                <div className="chatbox-meta">
-                  <span>{msg.username}</span>
-                  <span>{formatDate(msg.createdAt)}</span>
+        {(!messages || messages.length === 0) ? (
+          <div className="text-center text-gray-400 italic mt-10 select-none">
+            To początek konwersacji. Przywitaj się 👋
+          </div>
+        ) : (
+          messages.map((msg, i) => {
+            const isMine = user && (msg.userId === user._id || msg.userId?._id === user._id);
+            const avatarUrl = msg.avatar || defaultAvatar(msg.username);
+            const msgId = msg._id || i;
+            const firstInGroup = isFirstInGroup(messages, i);
+
+            return (
+              <div
+                key={msgId}
+                className={`flex items-end mb-1 ${isMine ? "justify-end" : ""}
+                  ${selectedMsgId === msgId ? "bg-indigo-100/80 ring-2 ring-indigo-400/70 rounded-2xl transition-all duration-150" : ""}
+                `}
+                onContextMenu={isMine ? (e) => {
+                  e.preventDefault();
+                  setSelectedMsgId(msgId);
+                  setContextMenu({
+                    visible: true,
+                    x: e.clientX,
+                    y: e.clientY,
+                    msg
+                  });
+                } : undefined}
+              >
+                {/* Avatar i nick tylko przy pierwszej z serii i tylko dla innych */}
+                {!isMine && firstInGroup && (
+                  <img
+                    src={avatarUrl}
+                    alt="avatar"
+                    className="w-9 h-9 rounded-full object-cover bg-indigo-100 mr-2 flex-shrink-0"
+                  />
+                )}
+                <div className="flex flex-col max-w-[60%]">
+                  {/* Nazwa i czas nad dymkiem tylko przy pierwszej z serii */}
+                  {firstInGroup && (
+                    <div className={`flex items-center gap-2 mb-1 ${isMine ? "justify-end" : ""}`}>
+                      <span className="font-bold text-indigo-800 text-xs">{msg.username}</span>
+                      <span className="text-xs text-gray-400">{formatTime(msg.createdAt)}</span>
+                    </div>
+                  )}
+                  <div className={`rounded-2xl px-4 py-2 shadow
+                    ${isMine
+                      ? "bg-blue-100 text-right self-end"
+                      : "bg-indigo-100 text-left self-start"
+                    }
+                    break-words
+                  `}>
+                    {renderMessage(msg)}
+                  </div>
                 </div>
-                {renderMessage(msg)}
+                {/* NIE pokazuj swojego avatara po prawej */}
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
+      {/* Dropdown menu */}
+      {contextMenu.visible && (
+        <div
+          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-44"
+          style={{ top: contextMenu.y, left: contextMenu.x, minWidth: 160 }}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <button className="block w-full text-left px-4 py-2 text-sm hover:bg-indigo-50"
+            onClick={() => { handleReply(contextMenu.msg); setContextMenu({ ...contextMenu, visible: false }); }}>
+            Odpowiedz
+          </button>
+          <button className="block w-full text-left px-4 py-2 text-sm hover:bg-indigo-50"
+            onClick={() => { handleCopyText(contextMenu.msg); setContextMenu({ ...contextMenu, visible: false }); }}>
+            Kopiuj tekst
+          </button>
+          <button className="block w-full text-left px-4 py-2 text-sm hover:bg-indigo-50"
+            onClick={() => { handleEdit(contextMenu.msg); setContextMenu({ ...contextMenu, visible: false }); }}>
+            Edytuj
+          </button>
+          <button className="block w-full text-left px-4 py-2 text-sm hover:bg-indigo-50"
+            onClick={() => { handlePin(contextMenu.msg); setContextMenu({ ...contextMenu, visible: false }); }}>
+            Przypnij
+          </button>
+          <button className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            onClick={() => { handleDelete(contextMenu.msg); setContextMenu({ ...contextMenu, visible: false }); }}>
+            Usuń
+          </button>
+        </div>
+      )}
+      {/* Modal potwierdzający usunięcie */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-xs w-full flex flex-col items-center">
+            <div className="text-red-600 text-3xl mb-2">🗑️</div>
+            <div className="font-bold text-lg mb-2 text-gray-800 text-center">
+              Usunąć tę wiadomość?
+            </div>
+            <div className="text-gray-500 text-center mb-4 text-sm break-words max-w-full">
+              {deleteModal.msg?.text?.startsWith("<GIF>")
+                ? "[GIF]"
+                : deleteModal.msg?.text}
+            </div>
+            <div className="flex gap-4 mt-2">
+              <button
+                className="px-4 py-2 rounded bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                onClick={() => setDeleteModal({ open: false, msg: null })}
+              >
+                Anuluj
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+                onClick={confirmDelete}
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Input na dole */}
       <div className="absolute left-0 right-0 bottom-0 bg-white border-t flex gap-2 p-2 z-10">
         <button

@@ -22,6 +22,13 @@ function EventsList() {
   const [date, setDate] = useState("");
 
   useEffect(() => {
+    if (flash) {
+      const timer = setTimeout(() => setFlash(""), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [flash]);
+  
+  useEffect(() => {
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
@@ -140,6 +147,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [flash, setFlash] = useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -149,6 +157,7 @@ export default function App() {
 
   // KLUCZOWA FUNKCJA!
   async function refreshUser() {
+    
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -171,7 +180,12 @@ export default function App() {
       setUser(null);
     }
   }
-
+  useEffect(() => {
+    if (flash) {
+      const timer = setTimeout(() => setFlash(""), 2500);
+      return () => clearTimeout(timer);
+    }
+  }),
   useEffect(() => {
     setLoadingUser(true);
     fetch("https://gramytu.onrender.com/events")
@@ -198,10 +212,14 @@ export default function App() {
     setSuccessEvent(event);
   };
 
+
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("token");
+    setFlash("Wylogowano pomyślnie!");
+    navigate("/"); // przekieruj na home
   };
+  
   const handleProfile = () => setShowProfile(true);
   const handleSettings = () => alert("Ustawienia (do zaimplementowania)");
   const openLoginModal = () => setShowLogIn(true);
@@ -223,6 +241,25 @@ export default function App() {
           onSettings={handleSettings}
         />
       )}
+{flash && (
+  <div style={{
+    position: "fixed",
+    top: 24,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "#4f46e5",
+    color: "#fff",
+    padding: "14px 32px",
+    borderRadius: 16,
+    fontWeight: 700,
+    fontSize: 18,
+    zIndex: 9999,
+    boxShadow: "0 2px 16px #0002",
+    letterSpacing: 1
+  }}>
+    {flash}
+  </div>
+)}
 
       <Routes>
         <Route path="/" element={<Landing2025 events={events} user={user}/>} />

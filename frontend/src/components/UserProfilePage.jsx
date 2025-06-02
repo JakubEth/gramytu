@@ -227,7 +227,7 @@ export default function UserProfilePage({ user, onUpdate }) {
               Email: <span style={{ fontWeight: 500 }}>{user?.email || <span style={{ color: "#a1a1aa" }}>Nie podano</span>}</span>
             </p>
             <div style={{ marginTop: 8 }}>
-              <span style={{ fontWeight: 700, color: "#3730a3" }}>Typ osobowości MBTI: </span>
+              <span style={{ fontWeight: 700, color: "#3730a3" }}>Typ osobowości: </span>
               <span style={{ fontWeight: 500 }}>
                 {user?.mbtiType
                   ? user.mbtiType
