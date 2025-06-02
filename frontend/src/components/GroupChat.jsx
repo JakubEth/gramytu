@@ -10,11 +10,16 @@ export default function GroupChat({ eventId, user }) {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Pobierz historię czatu przy wejściu na event
-  useEffect(() => {
+  // Funkcja do pobrania historii czatu
+  const fetchHistory = () => {
     fetch(`${API_URL}/events/${eventId}/chat`)
       .then(res => res.json())
       .then(data => setMessages(data || []));
+  };
+
+  // Pobierz historię przy wejściu na czat
+  useEffect(() => {
+    fetchHistory();
   }, [eventId]);
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
@@ -24,12 +29,14 @@ export default function GroupChat({ eventId, user }) {
       eventId,
       token: localStorage.getItem("token"),
     });
-    socketRef.current.on("eventMessage", (msg) => {
-      setMessages((msgs) => [...msgs, msg]);
+    socketRef.current.on("eventMessage", () => {
+      // Po każdej nowej wiadomości odśwież całą historię z bazy!
+      fetchHistory();
     });
     return () => {
       socketRef.current.disconnect();
     };
+    // eslint-disable-next-line
   }, [eventId]);
 
   // Auto-scroll na dół po każdej nowej wiadomości
