@@ -8,7 +8,7 @@ import iconComputer from "../assets/marker-computer.png";
 import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
-import { FaHeart, FaRegHeart } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaSignInAlt, FaSignOutAlt, FaComments, FaTrash, FaCommentDots } from "react-icons/fa";
 import { io } from "socket.io-client";
 
 const API_URL = "https://gramytu.onrender.com";
@@ -42,6 +42,50 @@ function formatDate(dateStr) {
     d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) +
     ", " +
     d.toLocaleDateString("pl-PL")
+  );
+}
+
+function LikeButton({ eventId, user }) {
+  const [likes, setLikes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/events/${eventId}`)
+      .then(res => res.json())
+      .then(ev => setLikes(ev.likes || []))
+      .catch(() => setLikes([]));
+  }, [eventId]);
+
+  const liked = user && likes.some(id => id === user._id || id?._id === user._id);
+
+  const handleLike = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      await fetch(
+        `${API_URL}/events/${eventId}/${liked ? "unlike" : "like"}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        }
+      );
+      const res2 = await fetch(`${API_URL}/events/${eventId}`);
+      const ev = await res2.json();
+      setLikes(ev.likes || []);
+    } catch {}
+    setLoading(false);
+  };
+
+  return (
+    <button
+      onClick={handleLike}
+      className={`flex flex-col items-center ${liked ? "text-red-600" : "text-gray-400"} hover:text-red-800`}
+      title={liked ? "Cofnij polubienie" : "Polub"}
+      disabled={!user || loading}
+    >
+      <FaHeart size={22} />
+      <span className="text-xs font-bold">{likes.length}</span>
+    </button>
   );
 }
 
@@ -242,66 +286,6 @@ function ParticipantsList({ eventId }) {
         ))}
       </ul>
     </div>
-  );
-}
-
-function LikeButton({ eventId, user }) {
-  const [likes, setLikes] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`${API_URL}/events/${eventId}`)
-      .then(res => {
-        if (!res.ok) {
-          console.error("Błąd pobierania eventu (GET /events/:id):", res.status);
-          return { likes: [] };
-        }
-        return res.json();
-      })
-      .then(ev => setLikes(ev.likes || []))
-      .catch(err => {
-        console.error("Błąd fetch likes:", err);
-        setLikes([]);
-      });
-  }, [eventId]);
-
-  const liked = user && likes.some(id => id === user._id || id?._id === user._id);
-
-  const handleLike = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await fetch(
-        `${API_URL}/events/${eventId}/${liked ? "unlike" : "like"}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        }
-      );
-      const res2 = await fetch(`${API_URL}/events/${eventId}`);
-      if (!res2.ok) {
-        setLikes([]);
-        setLoading(false);
-        return;
-      }
-      const ev = await res2.json();
-      setLikes(ev.likes || []);
-    } catch (err) {
-      console.error("Błąd handleLike:", err);
-    }
-    setLoading(false);
-  };
-
-  return (
-    <button
-      onClick={handleLike}
-      disabled={!user || loading}
-      className="flex items-center gap-1 text-sm mb-2"
-      title={user ? (liked ? "Cofnij polubienie" : "Polub") : "Zaloguj się, by polubić"}
-    >
-      {liked ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
-      <span>{likes.length}</span>
-    </button>
   );
 }
 
@@ -561,72 +545,79 @@ export default function LandingMap({ events, user, setEvents }) {
                       >
                         Zapisani: {participants.length}/{ev.maxParticipants}
                       </button>
-                      <div className="flex items-center gap-2 mt-2">
+                      {/* --- IKONY: polubienia, komentarze, dołącz, opuść, czat, usuń --- */}
+                      <div className="flex items-center gap-3 mt-3">
                         <LikeButton eventId={ev._id} user={user} />
                         <button
                           onClick={() => setCommentsModalEvent(ev._id)}
-                          className="text-indigo-600 underline text-xs hover:text-indigo-800"
+                          className="flex flex-col items-center text-indigo-500 hover:text-indigo-800 relative"
+                          title="Komentarze"
                         >
-                          Komentarze
+                          <FaCommentDots size={22} />
+                          <span className="text-xs font-bold">{Array.isArray(ev.comments) ? ev.comments.length : 0}</span>
                         </button>
-                      </div>
-                      {/* --- PRZYCISKI DOŁĄCZ/OPUŚĆ/CZAT/INFO ORGANIZATORA --- */}
-                      {!isOrganizer && (participants.length < ev.maxParticipants) && !isUserParticipant && (
-                        <button
-                          onClick={async () => {
-                            if (ev.paid) {
-                              alert(`Przekierowanie do płatności (mock): ${ev.price} zł`);
-                              return;
-                            }
-                            await handleJoin(ev._id);
-                          }}
-                          className="bg-indigo-600 text-white px-4 py-1 rounded mt-2"
-                        >
-                          {ev.paid ? `Opłać udział (${ev.price} zł)` : "Dołącz"}
-                        </button>
-                      )}
-                      {!isOrganizer && isUserParticipant && (
-                        <button
-                          onClick={async () => await handleLeave(ev._id)}
-                          className="bg-red-600 text-white px-4 py-1 rounded mt-2"
-                        >
-                          Opuść wydarzenie
-                        </button>
-                      )}
-                      {isUserParticipant && (
-                        <button
-                          className="bg-indigo-700 text-white px-3 py-1 rounded mb-2 mt-2"
-                          onClick={() => setChatModalEvent(ev._id)}
-                        >
-                          Dołącz do czatu grupowego
-                        </button>
-                      )}
-                      {(participants.length >= ev.maxParticipants) && !isUserParticipant && (
-                        <div className="text-red-500 font-semibold mt-2">Brak wolnych miejsc</div>
-                      )}
-                      {user && ev.hostId === user._id && (
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm("Na pewno usunąć to wydarzenie?")) return;
-                            const res = await fetch(
-                              `${API_URL}/events/${ev._id}`,
-                              {
-                                method: "DELETE",
-                                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                        {!isOrganizer && (participants.length < ev.maxParticipants) && !isUserParticipant && (
+                          <button
+                            onClick={async () => {
+                              if (ev.paid) {
+                                alert(`Przekierowanie do płatności (mock): ${ev.price} zł`);
+                                return;
                               }
-                            );
-                            if (res.ok) {
-                              handleDeleteEvent(ev._id);
-                              alert("Wydarzenie usunięte!");
-                            } else {
-                              alert("Nie udało się usunąć wydarzenia");
-                            }
-                          }}
-                          className="bg-red-600 text-white px-4 py-1 rounded mt-2"
-                        >
-                          Usuń wydarzenie
-                        </button>
-                      )}
+                              await handleJoin(ev._id);
+                            }}
+                            className="flex flex-col items-center text-indigo-600 hover:text-indigo-900"
+                            title="Dołącz"
+                          >
+                            <FaSignInAlt size={22} />
+                            <span className="text-xs">Dołącz</span>
+                          </button>
+                        )}
+                        {!isOrganizer && isUserParticipant && (
+                          <button
+                            onClick={async () => await handleLeave(ev._id)}
+                            className="flex flex-col items-center text-red-600 hover:text-red-900"
+                            title="Opuść wydarzenie"
+                          >
+                            <FaSignOutAlt size={22} />
+                            <span className="text-xs">Opuść</span>
+                          </button>
+                        )}
+                        {isUserParticipant && (
+                          <button
+                            className="flex flex-col items-center text-indigo-700 hover:text-indigo-900"
+                            onClick={() => setChatModalEvent(ev._id)}
+                            title="Czat grupowy"
+                          >
+                            <FaComments size={22} />
+                            <span className="text-xs">Czat</span>
+                          </button>
+                        )}
+                        {user && ev.hostId === user._id && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm("Na pewno usunąć to wydarzenie?")) return;
+                              const res = await fetch(
+                                `${API_URL}/events/${ev._id}`,
+                                {
+                                  method: "DELETE",
+                                  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                                }
+                              );
+                              if (res.ok) {
+                                handleDeleteEvent(ev._id);
+                                alert("Wydarzenie usunięte!");
+                              } else {
+                                alert("Nie udało się usunąć wydarzenia");
+                              }
+                            }}
+                            className="flex flex-col items-center text-gray-400 hover:text-red-700"
+                            title="Usuń wydarzenie"
+                          >
+                            <FaTrash size={22} />
+                            <span className="text-xs">Usuń</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Popup>
