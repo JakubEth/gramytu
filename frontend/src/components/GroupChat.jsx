@@ -4,60 +4,49 @@ import { io } from "socket.io-client";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
+// Funkcja do formatowania daty
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return (
+    d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) +
+    ", " +
+    d.toLocaleDateString("pl-PL")
+  );
+}
+
 export default function GroupChat({ eventId, user }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // DEBUG: sprawdź eventId
-  useEffect(() => {
-    console.log("GroupChat: eventId =", eventId);
-  }, [eventId]);
-
   // Pobierz historię czatu PRZY KAŻDYM WEJŚCIU na czat
   useEffect(() => {
     if (!eventId) {
-      console.warn("Brak eventId, nie pobieram historii czatu");
-      setMessages([]); // Zabezpieczenie przed n.map is not a function
+      setMessages([]);
       return;
     }
-    console.log("fetchHistory: eventId =", eventId);
     fetch(`${API_URL}/events/${eventId}/chat`)
       .then(res => {
         if (!res.ok) throw new Error("Błąd HTTP: " + res.status);
         return res.json();
       })
       .then(data => {
-        console.log("HISTORIA CZATU:", data);
         setMessages(Array.isArray(data) ? data : []);
       })
       .catch(err => {
-        console.error("Błąd pobierania historii czatu:", err);
-        setMessages([]); // Zabezpieczenie przed n.map is not a function
+        setMessages([]);
       });
   }, [eventId]);
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
-    if (!eventId) {
-      console.warn("Brak eventId, nie łączę z socket.io");
-      return;
-    }
+    if (!eventId) return;
     socketRef.current = io(SOCKET_URL, { 
       transports: ["websocket", "polling"], 
       withCredentials: true, 
       secure: true 
-    });
-
-    socketRef.current.on("connect", () => {
-      console.log("Socket.io connected:", socketRef.current.id);
-    });
-    socketRef.current.on("connect_error", (err) => {
-      console.error("Socket.IO connect_error:", err.message, err);
-    });
-    socketRef.current.on("disconnect", (reason) => {
-      console.warn("Socket.IO disconnected:", reason);
     });
 
     socketRef.current.emit("joinEventChat", {
@@ -66,8 +55,11 @@ export default function GroupChat({ eventId, user }) {
     });
 
     socketRef.current.on("eventMessage", (msg) => {
-      console.log("ODEBRANO eventMessage z socket.io:", msg);
       setMessages(prev => [...prev, msg]);
+    });
+
+    socketRef.current.on("deleteMessage", (msgId) => {
+      setMessages(prev => prev.filter(m => m._id !== msgId));
     });
 
     return () => {
@@ -75,23 +67,37 @@ export default function GroupChat({ eventId, user }) {
     };
   }, [eventId]);
 
-  // Auto-scroll na dół po każdej nowej wiadomości
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    console.log("Aktualne wiadomości:", messages);
   }, [messages]);
 
   const handleSend = () => {
     if (!text.trim()) return;
-    if (!eventId) {
-      alert("Brak eventId, nie można wysłać wiadomości!");
-      return;
-    }
     socketRef.current.emit("eventMessage", {
       eventId,
       text,
     });
     setText("");
+  };
+
+  // Usuwanie wiadomości
+  const handleDelete = async (msgId) => {
+    try {
+      const res = await fetch(
+        `${API_URL}/events/${eventId}/chat/${msgId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        }
+      );
+      if (res.ok) {
+        setMessages(prev => prev.filter(m => m._id !== msgId));
+        // Emituj do innych
+        socketRef.current.emit("deleteMessage", msgId);
+      }
+    } catch (e) {
+      alert("Nie udało się usunąć wiadomości");
+    }
   };
 
   return (
@@ -102,8 +108,20 @@ export default function GroupChat({ eventId, user }) {
           <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
         )}
         {Array.isArray(messages) && messages.map((msg, i) => (
-          <div key={msg._id || i} className="mb-1">
-            <b>{msg.username}:</b> {msg.text}
+          <div key={msg._id || i} className="mb-1 flex items-center group">
+            <div className="flex-1">
+              <b>{msg.username}:</b> {msg.text}
+              <span className="ml-2 text-xs text-gray-400">{formatDate(msg.createdAt)}</span>
+            </div>
+            {user && msg.userId === user._id && (
+              <button
+                onClick={() => handleDelete(msg._id)}
+                className="ml-2 text-xs text-red-500 opacity-70 group-hover:opacity-100 hover:underline"
+                title="Usuń wiadomość"
+              >
+                Usuń
+              </button>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
