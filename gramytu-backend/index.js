@@ -258,18 +258,26 @@ app.get('/events/:id/participants', async (req, res) => {
 // --- TRWAŁY CZAT GRUPOWY ---
 // Pobierz historię czatu dla eventu
 app.get('/events/:id/chat', async (req, res) => {
-  const { Types } = require('mongoose');
-  let eventObjectId = req.params.id;
-  if (Types.ObjectId.isValid(req.params.id)) {
-    eventObjectId = Types.ObjectId(req.params.id);
+  try {
+    const { Types } = require('mongoose');
+    const eventId = req.params.id;
+
+    if (!Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ error: "Nieprawidłowy format eventId" });
+    }
+
+    const eventObjectId = Types.ObjectId(eventId);
+    const messages = await ChatMessage.find({ eventId: eventObjectId })
+      .sort({ createdAt: 1 })
+      .select('username text createdAt userId');
+
+    res.json(messages);
+  } catch (error) {
+    console.error("Błąd w /events/:id/chat:", error);
+    res.status(500).json({ error: "Wewnętrzny błąd serwera" });
   }
-  console.log("DEBUG /events/:id/chat eventId:", req.params.id, "eventObjectId:", eventObjectId);
-  const messages = await ChatMessage.find({ eventId: eventObjectId })
-    .sort({ createdAt: 1 })
-    .select('username text createdAt userId');
-  console.log("DEBUG /events/:id/chat messages:", messages);
-  res.json(messages);
 });
+
 
 // --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---
 io.on('connection', (socket) => {
