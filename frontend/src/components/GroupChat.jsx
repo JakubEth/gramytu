@@ -5,11 +5,6 @@ import "./GroupChat.css";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
-// Użyj TYLKO tego sposobu!
-const GIPHY_API_KEY = process.env.REACT_APP_GIPHY_KEY;
-
-console.log("DEBUG: GIPHY_API_KEY =", GIPHY_API_KEY);
-
 function formatDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -78,27 +73,20 @@ export default function GroupChat({ eventId, user }) {
     prevLastMsgId.current = lastMsg ? lastMsg._id : undefined;
   }, [messages, eventId]);
 
-  // GIPHY obsługa
+  // GIPHY obsługa przez backend proxy
   const fetchGifs = async (query) => {
     if (!query) return setGifs([]);
-    if (!GIPHY_API_KEY) {
-      console.error("Brak klucza GIPHY_API_KEY! Sprawdź zmienne środowiskowe na Netlify i zrób redeploy.");
-      setGifs([]);
-      return;
-    }
     try {
       const res = await fetch(
-        `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
-          query
-        )}&limit=12&rating=pg`
+        `${API_URL}/giphy/search?q=${encodeURIComponent(query)}`
       );
       if (!res.ok) {
-        console.error("Giphy API error:", res.status, await res.text());
+        console.error("Giphy proxy API error:", res.status, await res.text());
         setGifs([]);
         return;
       }
       const data = await res.json();
-      setGifs(data.data || []);
+      setGifs(data || []);
     } catch (e) {
       console.error("Giphy fetch error:", e);
       setGifs([]);

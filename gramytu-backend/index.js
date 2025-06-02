@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 require('dotenv').config();
+const fetch = require("node-fetch");
 
 const { Event, User, ChatMessage } = require('./models');
 const app = express();
@@ -16,7 +17,6 @@ const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
   transports: ['websocket', 'polling']
 });
-
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -370,6 +370,20 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log("Socket.io: user disconnected");
   });
+});
+
+
+app.get('/giphy/search', async (req, res) => {
+  const q = req.query.q || "";
+  if (!q) return res.json([]);
+  const url = `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=12&rating=pg`;
+  try {
+    const r = await fetch(url);
+    const data = await r.json();
+    res.json(data.data || []);
+  } catch (e) {
+    res.status(500).json({ error: "Giphy error" });
+  }
 });
 
 const PORT = process.env.PORT || 10000;
