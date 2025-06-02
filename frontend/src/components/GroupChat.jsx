@@ -5,11 +5,8 @@ import "./GroupChat.css";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
-// Pobierz klucz Giphy z env (działa dla Vite i CRA)
-const GIPHY_API_KEY =
-  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_GIPHY_KEY
-    ? import.meta.env.VITE_GIPHY_KEY
-    : process.env.REACT_APP_GIPHY_KEY;
+// Użyj TYLKO tego sposobu!
+const GIPHY_API_KEY = process.env.REACT_APP_GIPHY_KEY;
 
 console.log("DEBUG: GIPHY_API_KEY =", GIPHY_API_KEY);
 
@@ -85,7 +82,7 @@ export default function GroupChat({ eventId, user }) {
   const fetchGifs = async (query) => {
     if (!query) return setGifs([]);
     if (!GIPHY_API_KEY) {
-      console.error("Brak klucza GIPHY_API_KEY! Sprawdź zmienne środowiskowe i redeploy.");
+      console.error("Brak klucza GIPHY_API_KEY! Sprawdź zmienne środowiskowe na Netlify i zrób redeploy.");
       setGifs([]);
       return;
     }
