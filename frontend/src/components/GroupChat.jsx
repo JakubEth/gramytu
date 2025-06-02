@@ -4,6 +4,7 @@ import "./GroupChat.css";
 
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
+const GIPHY_API_KEY = import.meta.env.VITE_GIPHY_KEY || process.env.REACT_APP_GIPHY_KEY;
 
 function formatDate(dateStr) {
   if (!dateStr) return "";
@@ -18,6 +19,9 @@ function formatDate(dateStr) {
 export default function GroupChat({ eventId, user }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [showGiphy, setShowGiphy] = useState(false);
+  const [gifs, setGifs] = useState([]);
+  const [gifSearch, setGifSearch] = useState("");
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -54,15 +58,14 @@ export default function GroupChat({ eventId, user }) {
     };
   }, [eventId]);
 
-  // Przewijaj tylko przy NOWEJ wiadomości (nie po wejściu w czat)
+  // Scroll tylko przy nowej wiadomości
   const prevLastMsgId = useRef();
-
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
     if (
       lastMsg &&
       lastMsg._id !== prevLastMsgId.current &&
-      prevLastMsgId.current !== undefined // nie przewijaj przy pierwszym renderze
+      prevLastMsgId.current !== undefined
     ) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -70,6 +73,18 @@ export default function GroupChat({ eventId, user }) {
     }
     prevLastMsgId.current = lastMsg ? lastMsg._id : undefined;
   }, [messages, eventId]);
+
+  // GIPHY obsługa
+  const fetchGifs = async (query) => {
+    if (!query) return setGifs([]);
+    const res = await fetch(
+      `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
+        query
+      )}&limit=12&rating=pg`
+    );
+    const data = await res.json();
+    setGifs(data.data || []);
+  };
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -79,6 +94,31 @@ export default function GroupChat({ eventId, user }) {
     });
     setText("");
   };
+
+  const handleSendGif = (gifUrl) => {
+    socketRef.current.emit("eventMessage", {
+      eventId,
+      text: `<GIF>${gifUrl}`,
+    });
+    setShowGiphy(false);
+    setGifSearch("");
+    setGifs([]);
+  };
+
+  function renderMessage(msg) {
+    if (msg.text.startsWith("<GIF>")) {
+      const url = msg.text.replace("<GIF>", "");
+      return (
+        <img
+          src={url}
+          alt="GIF"
+          className="max-w-[200px] max-h-[200px] rounded shadow"
+          style={{ display: "block" }}
+        />
+      );
+    }
+    return <div>{msg.text}</div>;
+  }
 
   const handleRightClick = (e, msg) => {
     e.preventDefault();
@@ -98,7 +138,6 @@ export default function GroupChat({ eventId, user }) {
   return (
     <div className="flex flex-col h-full relative">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
-      {/* Kontener na wiadomości, z padding-bottom na input */}
       <div
         className="chatbox-messages overflow-y-auto flex-1 pr-1"
         style={{ overflowAnchor: "none", paddingBottom: 64 }}
@@ -121,15 +160,22 @@ export default function GroupChat({ eventId, user }) {
                   <span>{msg.username}</span>
                   <span>{formatDate(msg.createdAt)}</span>
                 </div>
-                <div>{msg.text}</div>
+                {renderMessage(msg)}
               </div>
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
-      {/* Input przyklejony na samym dole */}
+      {/* Input na dole */}
       <div className="absolute left-0 right-0 bottom-0 bg-white border-t flex gap-2 p-2 z-10">
+        <button
+          className="bg-indigo-100 text-indigo-700 px-2 rounded font-bold"
+          onClick={() => setShowGiphy((v) => !v)}
+          title="Wyślij GIF"
+        >
+          GIF
+        </button>
         <input
           value={text}
           onChange={e => setText(e.target.value)}
@@ -144,6 +190,41 @@ export default function GroupChat({ eventId, user }) {
           Wyślij
         </button>
       </div>
+      {/* Popup z wyszukiwarką GIFów */}
+      {showGiphy && (
+        <div className="absolute left-0 right-0 bottom-14 bg-white border-t shadow-lg p-4 z-20">
+          <div className="flex gap-2 mb-2">
+            <input
+              value={gifSearch}
+              onChange={e => {
+                setGifSearch(e.target.value);
+                fetchGifs(e.target.value);
+              }}
+              className="border rounded px-2 py-1 flex-1 text-sm"
+              placeholder="Szukaj GIFa..."
+              autoFocus
+            />
+            <button
+              className="text-red-600 font-bold px-2"
+              onClick={() => setShowGiphy(false)}
+            >
+              X
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+            {gifs.map(gif => (
+              <img
+                key={gif.id}
+                src={gif.images.fixed_height_small.url}
+                alt={gif.title}
+                className="w-24 h-24 object-cover rounded cursor-pointer border hover:border-indigo-500"
+                onClick={() => handleSendGif(gif.images.fixed_height.url)}
+              />
+            ))}
+            {gifs.length === 0 && <div className="text-gray-400">Brak wyników</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
