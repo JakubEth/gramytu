@@ -59,7 +59,6 @@ app.get('/events/:id', async (req, res) => {
 
 // --- UTWÓRZ EVENT: organizator zawsze w participants ---
 app.post('/events', async (req, res) => {
-  // Dodaj hostId do participants, jeśli nie ma
   let participants = req.body.participants || [];
   if (!participants.map(id => id.toString()).includes(req.body.hostId)) {
     participants = [req.body.hostId, ...participants];
@@ -251,7 +250,6 @@ app.delete('/events/:id', auth, async (req, res) => {
 app.post('/events/:id/join', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
-  // Blokada dla organizatora
   if (event.hostId.toString() === req.user._id.toString()) {
     return res.status(400).json({ error: "Organizator już jest uczestnikiem" });
   }
@@ -268,7 +266,6 @@ app.post('/events/:id/join', auth, async (req, res) => {
 app.post('/events/:id/leave', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
-  // Blokada dla organizatora
   if (event.hostId.toString() === req.user._id.toString()) {
     return res.status(400).json({ error: "Organizator nie może opuścić wydarzenia" });
   }
@@ -372,6 +369,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// --- GIPHY PROXY ENDPOINT Z DEBUGIEM ---
 console.log("DEBUG: process.env.GIPHY_API_KEY =", process.env.GIPHY_API_KEY);
 
 app.get('/giphy/search', async (req, res) => {
@@ -385,13 +383,16 @@ app.get('/giphy/search', async (req, res) => {
   try {
     const r = await fetch(url);
     const data = await r.json();
-    res.json(data.data || []);
+    if (!data.data) {
+      console.error("Giphy response error:", data);
+      return res.status(500).json({ error: "Giphy error", details: data });
+    }
+    res.json(data.data);
   } catch (e) {
     console.error("Giphy proxy error:", e);
-    res.status(500).json({ error: "Giphy error" });
+    res.status(500).json({ error: "Giphy error", details: e.message });
   }
 });
-
 
 const PORT = process.env.PORT || 10000;
 
