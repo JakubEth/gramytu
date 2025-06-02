@@ -258,9 +258,16 @@ app.get('/events/:id/participants', async (req, res) => {
 // --- TRWAŁY CZAT GRUPOWY ---
 // Pobierz historię czatu dla eventu
 app.get('/events/:id/chat', async (req, res) => {
-  const messages = await ChatMessage.find({ eventId: req.params.id })
+  const { Types } = require('mongoose');
+  let eventObjectId = req.params.id;
+  if (Types.ObjectId.isValid(req.params.id)) {
+    eventObjectId = Types.ObjectId(req.params.id);
+  }
+  console.log("DEBUG /events/:id/chat eventId:", req.params.id, "eventObjectId:", eventObjectId);
+  const messages = await ChatMessage.find({ eventId: eventObjectId })
     .sort({ createdAt: 1 })
     .select('username text createdAt userId');
+  console.log("DEBUG /events/:id/chat messages:", messages);
   res.json(messages);
 });
 
@@ -272,14 +279,14 @@ io.on('connection', (socket) => {
       socket.join(eventId);
       socket.user = user;
       socket.eventId = eventId;
+      console.log("Socket.io: user joined event chat", eventId, user.username);
     } catch (e) {
-      // Nieprawidłowy token
+      console.error("Socket.io: joinEventChat error", e);
     }
   });
 
   socket.on('eventMessage', async ({ eventId, text }) => {
     if (!socket.user || !eventId || !text?.trim()) return;
-    // ZAPISZ WIADOMOŚĆ DO BAZY
     const msg = await ChatMessage.create({
       eventId,
       userId: socket.user.userId,
@@ -292,9 +299,12 @@ io.on('connection', (socket) => {
       text: msg.text,
       createdAt: msg.createdAt
     });
+    console.log("Socket.io: eventMessage sent and saved", msg);
   });
 
-  socket.on('disconnect', () => {});
+  socket.on('disconnect', () => {
+    console.log("Socket.io: user disconnected");
+  });
 });
 
 const PORT = process.env.PORT || 4000;

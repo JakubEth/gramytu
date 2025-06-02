@@ -10,33 +10,55 @@ export default function GroupChat({ eventId, user }) {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Funkcja do pobrania historii czatu
+  // DEBUG: sprawdź eventId
+  useEffect(() => {
+    console.log("GroupChat: eventId =", eventId);
+  }, [eventId]);
+
+  // Pobierz historię czatu PRZY KAŻDYM WEJŚCIU na czat
   const fetchHistory = () => {
+    console.log("fetchHistory: eventId =", eventId);
     fetch(`${API_URL}/events/${eventId}/chat`)
       .then(res => res.json())
-      .then(data => setMessages(data || []));
+      .then(data => {
+        console.log("HISTORIA CZATU:", data);
+        setMessages(data || []);
+      })
+      .catch(err => {
+        console.error("Błąd pobierania historii czatu:", err);
+      });
   };
 
-  // Pobierz historię przy wejściu na czat
   useEffect(() => {
     fetchHistory();
   }, [eventId]);
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL, { transports: ["websocket"] });
+    socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+    socketRef.current.on("connect", () => {
+      console.log("Socket.io connected:", socketRef.current.id);
+    });
+    socketRef.current.on("connect_error", (err) => {
+      console.error("Socket.IO connect_error:", err.message);
+    });
+    socketRef.current.on("disconnect", (reason) => {
+      console.warn("Socket.IO disconnected:", reason);
+    });
+
     socketRef.current.emit("joinEventChat", {
       eventId,
       token: localStorage.getItem("token"),
     });
-    socketRef.current.on("eventMessage", () => {
-      // Po każdej nowej wiadomości odśwież całą historię z bazy!
+
+    socketRef.current.on("eventMessage", (msg) => {
+      console.log("ODEBRANO eventMessage z socket.io:", msg);
       fetchHistory();
     });
+
     return () => {
       socketRef.current.disconnect();
     };
-    // eslint-disable-next-line
   }, [eventId]);
 
   // Auto-scroll na dół po każdej nowej wiadomości
@@ -57,8 +79,11 @@ export default function GroupChat({ eventId, user }) {
     <div className="flex flex-col h-96">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
+        {messages.length === 0 && (
+          <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
+        )}
         {messages.map((msg, i) => (
-          <div key={i} className="mb-1">
+          <div key={msg._id || i} className="mb-1">
             <b>{msg.username}:</b> {msg.text}
           </div>
         ))}
