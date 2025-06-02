@@ -161,12 +161,15 @@ app.get('/users/:id', async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
-      avatar: user.avatar || null
+      avatar: user.avatar || null,
+      createdAt: user.createdAt // <-- DODAJ TO!
     });
   } catch (error) {
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
+
+
 
 // --- UPLOAD AVATARA DO CLOUDINARY ---
 app.post('/users/:id/avatar', auth, upload.single('avatar'), async (req, res) => {
@@ -205,8 +208,14 @@ app.post('/register', async (req, res) => {
     );
     res.status(201).json({
       token,
-      user: { _id: newUser._id, username: newUser.username, email: newUser.email }
+      user: {
+        _id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        createdAt: newUser.createdAt // <-- DODAJ TO!
+      }
     });
+    
   } catch (error) {
     console.error("Błąd rejestracji:", error);
     res.status(500).json({ error: "Błąd serwera" });
@@ -240,7 +249,13 @@ app.post('/login', async (req, res) => {
     res.json({
       ok: true,
       token,
-      user: { _id: user._id, username: user.username, email: user.email, avatar: user.avatar }
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        createdAt: user.createdAt // <-- DODAJ TO!
+      }
     });
   } catch (error) {
     console.error("Błąd logowania:", error);
