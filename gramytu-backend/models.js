@@ -18,10 +18,14 @@ const UserSchema = new mongoose.Schema({
     lowercase: true,
     match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   },
-  password: { type: String, required: true, minlength: 8 },
+  password: { 
+    type: String, 
+    required: true, 
+    minlength: 8 
+  },
   avatar: String,
-  createdAt: { type: Date, default: Date.now }
-});
+  bio: String
+}, { timestamps: true });
 
 // --- Wydarzenie ---
 const EventSchema = new mongoose.Schema({
