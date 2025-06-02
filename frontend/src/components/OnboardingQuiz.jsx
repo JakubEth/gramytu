@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 // Przykładowa autoryzacja (dostosuj do swojego systemu!)
 function useAuth() {
-  // Przykład: token w localStorage
   return !!localStorage.getItem("token");
 }
 
@@ -87,7 +86,7 @@ const mbtiQuestions = [
   { question: "Lubię mieć jasno określone zasady i struktury.", dimension: "JP" }
 ];
 
-export default function OnboardingQuiz() {
+export default function OnboardingQuiz({ onUserUpdate }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = location.state?.user;
@@ -114,7 +113,7 @@ export default function OnboardingQuiz() {
         } else if (!max || prev.length < max) {
           return { ...a, [type]: [...prev, value] };
         } else {
-          return a; // nie dodawaj więcej niż max
+          return a;
         }
       } else {
         return { ...a, [type]: value };
@@ -170,7 +169,6 @@ export default function OnboardingQuiz() {
         mbtiType,
         isAdult: prefAnswers.isAdult === "Tak"
       };
-      // Usuń puste tablice
       if (Array.isArray(body.preferredCategories) && body.preferredCategories.length === 0) {
         delete body.preferredCategories;
       }
@@ -185,25 +183,23 @@ export default function OnboardingQuiz() {
       });
 
       if (!res.ok) throw new Error("Błąd zapisu");
-      if (onUserUpdate) onUserUpdate();
-        navigate("/");
+      if (onUserUpdate) await onUserUpdate(); // CZEKAJ na update!
+      navigate("/");
     } catch {
       setError("Błąd połączenia z serwerem.");
       setLoading(false);
     }
   }
 
-  function handleSkip() {
-    if (onUserUpdate) onUserUpdate();
-        navigate("/");
+  async function handleSkip() {
+    if (onUserUpdate) await onUserUpdate(); // CZEKAJ na update!
+    navigate("/");
   }
 
-  // Styl pełnoekranowy, gradient, pasek postępu
   const gradientBg = "bg-gradient-to-br from-indigo-400 via-indigo-100 to-amber-100";
   const stepTotal = preferenceQuestions.length + mbtiQuestions.length;
   const progress = Math.round((step + 1) / stepTotal * 100);
 
-  // PREFERENCJE
   if (step < preferenceQuestions.length) {
     const q = preferenceQuestions[step];
     const selected = prefAnswers[q.type] || (q.multi ? [] : "");
@@ -271,7 +267,6 @@ export default function OnboardingQuiz() {
     );
   }
 
-  // MBTI
   const mbtiStep = step - preferenceQuestions.length;
   if (mbtiStep < mbtiQuestions.length) {
     const q = mbtiQuestions[mbtiStep];

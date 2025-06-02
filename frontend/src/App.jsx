@@ -13,7 +13,7 @@ import MyEventsPanel from "./components/MyEventsPanel";
 import OnboardingQuiz from "./components/OnboardingQuiz";
 import { jwtDecode } from "jwt-decode";
 
-// KOMPONENT LISTY EVENTÓW
+// --- KOMPONENT LISTY EVENTÓW ---
 function EventsList() {
   const [events, setEvents] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -131,33 +131,6 @@ function SuccessIcon() {
   );
 }
 
-function refreshUser() {
-  const token = localStorage.getItem("token");
-  if (token) {
-    try {
-      const decoded = jwtDecode(token);
-      fetch(`https://gramytu.onrender.com/users/${decoded.userId}`)
-        .then(res => res.json())
-        .then(userFromDb => {
-          setUser({
-            _id: userFromDb._id,
-            username: userFromDb.username,
-            avatar: userFromDb.avatar
-          });
-        })
-        .catch(() => {
-          setUser(null);
-          localStorage.removeItem("token");
-        });
-    } catch {
-      setUser(null);
-      localStorage.removeItem("token");
-    }
-  } else {
-    setUser(null);
-  }
-}
-
 export default function App() {
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -174,39 +147,36 @@ export default function App() {
   // Ukryj header/footer na /onboarding
   const hideHeaderFooter = location.pathname === "/onboarding";
 
+  // KLUCZOWA FUNKCJA!
+  async function refreshUser() {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const res = await fetch(`https://gramytu.onrender.com/users/${decoded.userId}`);
+        const userFromDb = await res.json();
+        setUser({
+          _id: userFromDb._id,
+          username: userFromDb.username,
+          avatar: userFromDb.avatar
+        });
+      } catch {
+        setUser(null);
+        localStorage.removeItem("token");
+      }
+    } else {
+      setUser(null);
+    }
+  }
+
   useEffect(() => {
     setLoadingUser(true);
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
 
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        fetch(`https://gramytu.onrender.com/users/${decoded.userId}`)
-          .then(res => res.json())
-          .then(userFromDb => {
-            setUser({
-              _id: userFromDb._id,
-              username: userFromDb.username,
-              avatar: userFromDb.avatar
-            });
-            setLoadingUser(false);
-          })
-          .catch(() => {
-            setUser(null);
-            localStorage.removeItem("token");
-            setLoadingUser(false);
-          });
-      } catch {
-        setUser(null);
-        localStorage.removeItem("token");
-        setLoadingUser(false);
-      }
-    } else {
-      setLoadingUser(false);
-    }
+    // Początkowe pobranie usera
+    refreshUser().then(() => setLoadingUser(false));
   }, []);
 
   // Ochrona trasy /onboarding (przekieruj na /login jeśli nie ma tokena)
@@ -276,8 +246,8 @@ export default function App() {
           }
         />
         <Route path="/onboarding" element={
-  <OnboardingQuiz onUserUpdate={refreshUser} />
-} />
+          <OnboardingQuiz onUserUpdate={refreshUser} />
+        } />
       </Routes>
 
       {!hideHeaderFooter && <Footer />}
