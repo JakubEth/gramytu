@@ -372,19 +372,26 @@ io.on('connection', (socket) => {
   });
 });
 
+console.log("DEBUG: process.env.GIPHY_API_KEY =", process.env.GIPHY_API_KEY);
 
 app.get('/giphy/search', async (req, res) => {
   const q = req.query.q || "";
   if (!q) return res.json([]);
+  if (!process.env.GIPHY_API_KEY) {
+    console.error("Brak klucza GIPHY_API_KEY w backendzie!");
+    return res.status(500).json({ error: "Brak klucza GIPHY_API_KEY w backendzie!" });
+  }
   const url = `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=12&rating=pg`;
   try {
     const r = await fetch(url);
     const data = await r.json();
     res.json(data.data || []);
   } catch (e) {
+    console.error("Giphy proxy error:", e);
     res.status(500).json({ error: "Giphy error" });
   }
 });
+
 
 const PORT = process.env.PORT || 10000;
 
