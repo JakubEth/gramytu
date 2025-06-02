@@ -2,29 +2,20 @@ const mongoose = require('mongoose');
 
 // --- Użytkownik ---
 const UserSchema = new mongoose.Schema({
-  username: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    minlength: 3,
-    maxlength: 24,
-    trim: true
-  },
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    trim: true,
-    lowercase: true,
-    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  },
-  password: { 
-    type: String, 
-    required: true, 
-    minlength: 8 
-  },
-  avatar: String,
-  bio: String
+  username: { type: String, required: true, unique: true, minlength: 3, maxlength: 24, trim: true },
+  email:    { type: String, required: true, unique: true, trim: true, lowercase: true, match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+  password: { type: String, required: true, minlength: 8 },
+  avatar:   String,
+  bio:      String,
+  createdAt: { type: Date, default: Date.now },
+  // NOWE POLA:
+  isAdult: { type: Boolean, default: null }, // pełnoletni
+  favoriteEventType: String,
+  preferredEventSize: String,
+  preferredCategories: [String],
+  preferredTags: [String],
+  preferredMode: String,
+  mbtiType: String
 }, { timestamps: true });
 
 // --- Wydarzenie ---

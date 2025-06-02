@@ -114,7 +114,7 @@ export default function UserProfilePage({ user, onUpdate }) {
         <div style={{ background: "#000", border: "2px solid #d1d5db", borderRadius: 24, boxShadow: "0 8px 32px #0002", height: 600, width: 144, margin: "32px 0", overflow: "hidden", position: "relative" }}>
           <a href="https://worldoftanks.eu/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 0, width: "100%", height: "100%", transition: "transform .2s" }}>
             <img
-              src="https://media1.tenor.com/m/W9HhgbYoHpMAAAAd/world-of-tanks.gif"
+              src="https://media1.tenor.com/m/Qbcq1_dwWfQAAAAd/amx-airlines-wot.gif"
               alt="World of Tanks"
               style={{ width: "100%", height: 240, objectFit: "cover" }}
             />
@@ -198,13 +198,13 @@ export default function UserProfilePage({ user, onUpdate }) {
         <div style={{ background: "#fff", border: "2px solid #d1d5db", borderRadius: 24, boxShadow: "0 8px 32px #0002", height: 600, width: 144, margin: "32px 0", overflow: "hidden", position: "relative" }}>
           <a href="https://worldoftanks.eu/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 0, width: "100%", height: "100%", transition: "transform .2s" }}>
             <img
-              src="https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif"
+              src="https://media1.tenor.com/m/7UbZGL4aHWcAAAAd/tyler-booty.gif"
               alt="World of Tanks Banner"
               style={{ width: "100%", height: 240, objectFit: "cover" }}
             />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: 8 }}>
-              <span style={{ fontWeight: 800, color: "#3730a3", fontSize: 20, textAlign: "center", textShadow: "0 2px 8px #0008", animation: "pulse 1s infinite" }}>Dołącz do bitwy!</span>
-              <span style={{ fontSize: 12, color: "#52525b", marginTop: 4, textAlign: "center" }}>Nowe czołgi, nowe mapy, darmowe nagrody!</span>
+              <span style={{ fontWeight: 800, color: "#3730a3", fontSize: 20, textAlign: "center", textShadow: "0 2px 8px #0008", animation: "pulse 1s infinite" }}>Zagraj w League of Legends!</span>
+              <span style={{ fontSize: 12, color: "#52525b", marginTop: 4, textAlign: "center" }}>Nowe postacie, nowe mapy, darmowe nagrody!</span>
               <button style={{ marginTop: 12, background: "#3730a3", color: "#fff", fontWeight: 700, padding: "4px 16px", borderRadius: 8, boxShadow: "0 2px 8px #0002", animation: "bounce 1s infinite" }}>
                 ZAREJESTRUJ SIĘ
               </button>

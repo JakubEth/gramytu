@@ -456,6 +456,21 @@ app.get('/giphy/search', async (req, res) => {
   }
 });
 
+app.patch('/users/:id/preferences', async (req, res) => {
+  try {
+    const { isAdult, favoriteEventType, preferredEventSize, preferredCategories, preferredTags, preferredMode, mbtiType } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isAdult, favoriteEventType, preferredEventSize, preferredCategories, preferredTags, preferredMode, mbtiType },
+      { new: true }
+    );
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+
 const PORT = process.env.PORT || 10000;
 
 mongoose.connect(process.env.MONGO_URI)

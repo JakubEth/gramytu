@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash, FaTimes } from "react-icons/fa";
 import logo from "../assets/react.png";
 
@@ -14,6 +15,8 @@ export default function RegisterForm({ onSuccess, onClose }) {
   const [showPass, setShowPass] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const userRef = useRef(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     userRef.current?.focus();
@@ -68,7 +71,10 @@ export default function RegisterForm({ onSuccess, onClose }) {
       const data = await res.json();
       setLoading(false);
       if (res.ok && data && data.token && data.user) {
-        onSuccess && onSuccess(data);
+        // Zamknij modal rejestracji
+        onClose && onClose();
+        // Przekieruj na onboarding quiz, przekazując usera i token
+        navigate("/onboarding", { state: { user: data.user, token: data.token } });
       } else {
         setError(data.error || "Błąd rejestracji");
       }
