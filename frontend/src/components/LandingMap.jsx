@@ -7,7 +7,6 @@ import iconBoardgame from "../assets/marker-boardgame.png";
 import iconComputer from "../assets/marker-computer.png";
 import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
-import UserProfile from "./UserProfile";
 import { FaHeart, FaRegHeart, FaSignInAlt, FaSignOutAlt, FaComments, FaTrash, FaCommentDots } from "react-icons/fa";
 import { io } from "socket.io-client";
 
@@ -626,11 +625,6 @@ export default function LandingMap({ events, user, setEvents }) {
           })}
         </MarkerClusterGroup>
       </MapContainer>
-      {showProfile && profileUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <UserProfile user={profileUser} onClose={() => setShowProfile(false)} />
-        </div>
-      )}
       {commentsModalEvent && (
         <Modal onClose={() => setCommentsModalEvent(null)}>
           <CommentsSection eventId={commentsModalEvent} user={user} />
