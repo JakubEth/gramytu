@@ -4,7 +4,14 @@ import "./GroupChat.css";
 
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
-const GIPHY_API_KEY = import.meta.env.VITE_GIPHY_KEY || process.env.REACT_APP_GIPHY_KEY;
+
+// Pobierz klucz Giphy z env (działa dla Vite i CRA)
+const GIPHY_API_KEY =
+  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_GIPHY_KEY
+    ? import.meta.env.VITE_GIPHY_KEY
+    : process.env.REACT_APP_GIPHY_KEY;
+
+console.log("DEBUG: GIPHY_API_KEY =", GIPHY_API_KEY);
 
 function formatDate(dateStr) {
   if (!dateStr) return "";
@@ -77,13 +84,28 @@ export default function GroupChat({ eventId, user }) {
   // GIPHY obsługa
   const fetchGifs = async (query) => {
     if (!query) return setGifs([]);
-    const res = await fetch(
-      `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
-        query
-      )}&limit=12&rating=pg`
-    );
-    const data = await res.json();
-    setGifs(data.data || []);
+    if (!GIPHY_API_KEY) {
+      console.error("Brak klucza GIPHY_API_KEY! Sprawdź zmienne środowiskowe i redeploy.");
+      setGifs([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
+          query
+        )}&limit=12&rating=pg`
+      );
+      if (!res.ok) {
+        console.error("Giphy API error:", res.status, await res.text());
+        setGifs([]);
+        return;
+      }
+      const data = await res.json();
+      setGifs(data.data || []);
+    } catch (e) {
+      console.error("Giphy fetch error:", e);
+      setGifs([]);
+    }
   };
 
   const handleSend = () => {
