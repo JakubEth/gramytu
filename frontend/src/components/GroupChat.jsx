@@ -17,9 +17,16 @@ export default function GroupChat({ eventId, user }) {
 
   // Pobierz historię czatu PRZY KAŻDYM WEJŚCIU na czat
   useEffect(() => {
+    if (!eventId) {
+      console.warn("Brak eventId, nie pobieram historii czatu");
+      return;
+    }
     console.log("fetchHistory: eventId =", eventId);
     fetch(`${API_URL}/events/${eventId}/chat`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Błąd HTTP: " + res.status);
+        return res.json();
+      })
       .then(data => {
         console.log("HISTORIA CZATU:", data);
         setMessages(data || []);
@@ -31,6 +38,10 @@ export default function GroupChat({ eventId, user }) {
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
+    if (!eventId) {
+      console.warn("Brak eventId, nie łączę z socket.io");
+      return;
+    }
     socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
 
     socketRef.current.on("connect", () => {
@@ -66,6 +77,10 @@ export default function GroupChat({ eventId, user }) {
 
   const handleSend = () => {
     if (!text.trim()) return;
+    if (!eventId) {
+      alert("Brak eventId, nie można wysłać wiadomości!");
+      return;
+    }
     socketRef.current.emit("eventMessage", {
       eventId,
       text,
