@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
-// Funkcja do formatowania daty
+// Formatowanie daty
 function formatDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -21,33 +21,22 @@ export default function GroupChat({ eventId, user }) {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Pobierz historię czatu PRZY KAŻDYM WEJŚCIU na czat
+  // Pobierz historię czatu przy każdym wejściu na czat!
   useEffect(() => {
     if (!eventId) {
       setMessages([]);
       return;
     }
     fetch(`${API_URL}/events/${eventId}/chat`)
-      .then(res => {
-        if (!res.ok) throw new Error("Błąd HTTP: " + res.status);
-        return res.json();
-      })
-      .then(data => {
-        setMessages(Array.isArray(data) ? data : []);
-      })
-      .catch(err => {
-        setMessages([]);
-      });
+      .then(res => res.json())
+      .then(data => setMessages(Array.isArray(data) ? data : []))
+      .catch(() => setMessages([]));
   }, [eventId]);
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
     if (!eventId) return;
-    socketRef.current = io(SOCKET_URL, { 
-      transports: ["websocket", "polling"], 
-      withCredentials: true, 
-      secure: true 
-    });
+    socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
 
     socketRef.current.emit("joinEventChat", {
       eventId,
@@ -80,23 +69,19 @@ export default function GroupChat({ eventId, user }) {
     setText("");
   };
 
-  // Usuwanie wiadomości
-  const handleDelete = async (msgId) => {
-    try {
-      const res = await fetch(
-        `${API_URL}/events/${eventId}/chat/${msgId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+  // Usuwanie wiadomości po prawym kliknięciu na własny dymek
+  const handleRightClick = (e, msg) => {
+    e.preventDefault();
+    if (window.confirm("Usunąć tę wiadomość?")) {
+      fetch(`${API_URL}/events/${eventId}/chat/${msg._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      }).then(res => {
+        if (res.ok) {
+          setMessages(prev => prev.filter(m => m._id !== msg._id));
+          socketRef.current.emit("deleteMessage", msg._id);
         }
-      );
-      if (res.ok) {
-        setMessages(prev => prev.filter(m => m._id !== msgId));
-        // Emituj do innych
-        socketRef.current.emit("deleteMessage", msgId);
-      }
-    } catch (e) {
-      alert("Nie udało się usunąć wiadomości");
+      });
     }
   };
 
@@ -107,23 +92,41 @@ export default function GroupChat({ eventId, user }) {
         {(!messages || messages.length === 0) && (
           <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
         )}
-        {Array.isArray(messages) && messages.map((msg, i) => (
-          <div key={msg._id || i} className="mb-1 flex items-center group">
-            <div className="flex-1">
-              <b>{msg.username}:</b> {msg.text}
-              <span className="ml-2 text-xs text-gray-400">{formatDate(msg.createdAt)}</span>
-            </div>
-            {user && msg.userId === user._id && (
-              <button
-                onClick={() => handleDelete(msg._id)}
-                className="ml-2 text-xs text-red-500 opacity-70 group-hover:opacity-100 hover:underline"
-                title="Usuń wiadomość"
+        {Array.isArray(messages) && messages.map((msg, i) => {
+          const isMine = user && (msg.userId === user._id || msg.userId?._id === user._id);
+          return (
+            <div
+              key={msg._id || i}
+              className={`flex mb-2 ${isMine ? "justify-end" : "justify-start"}`}
+              onContextMenu={isMine ? (e) => handleRightClick(e, msg) : undefined}
+              title={isMine ? "Prawy klik by usunąć" : undefined}
+              style={{ userSelect: "text" }}
+            >
+              <div
+                className={`max-w-[70%] rounded-xl px-3 py-2 shadow 
+                  ${isMine
+                    ? "bg-indigo-100 text-indigo-900 rounded-br-sm"
+                    : "bg-white text-gray-800 rounded-bl-sm border"}
+                  relative group`}
+                style={{
+                  cursor: isMine ? "context-menu" : "default",
+                  border: isMine ? "none" : "1px solid #e5e7eb"
+                }}
               >
-                Usuń
-              </button>
-            )}
-          </div>
-        ))}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-xs text-gray-600">{msg.username}</span>
+                  <span className="text-[10px] text-gray-400">{formatDate(msg.createdAt)}</span>
+                </div>
+                <div className="break-words">{msg.text}</div>
+                {isMine && (
+                  <span className="hidden group-hover:inline absolute right-2 bottom-1 text-xs text-red-400">
+                    (usuń)
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
       <div className="flex gap-2">
