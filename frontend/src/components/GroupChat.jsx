@@ -334,63 +334,76 @@ export default function GroupChat({ eventId, user }) {
         </div>
       )}
       {/* Input na dole – sticky! */}
-      <div className="bg-white border-t flex gap-2 p-2 z-10 sticky bottom-0 left-0 right-0">
-        <button
-          className="bg-indigo-100 text-indigo-700 px-2 rounded font-bold"
-          onClick={() => setShowGiphy((v) => !v)}
-          title="Wyślij GIF"
-        >
-          GIF
-        </button>
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          className="border rounded px-2 py-1 flex-1 text-sm"
-          placeholder="Napisz wiadomość..."
-          onKeyDown={e => e.key === "Enter" ? handleSend() : null}
+      <div className="sticky bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white/90 to-white/60 border-t border-indigo-100 px-4 py-3 flex items-end gap-2 shadow-[0_-2px_16px_0_rgba(99,102,241,0.06)] backdrop-blur-sm">
+  {/* GIF button */}
+  <button
+    className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
+    onClick={() => setShowGiphy((v) => !v)}
+    title="Wyślij GIF"
+    type="button"
+  >
+    <span className="text-lg font-bold">GIF</span>
+  </button>
+  {/* Input */}
+  <input
+    value={text}
+    onChange={e => setText(e.target.value)}
+    className="flex-1 rounded-xl border border-indigo-100 bg-white px-4 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition placeholder-gray-400"
+    placeholder="Napisz wiadomość…"
+    onKeyDown={e => e.key === "Enter" ? handleSend() : null}
+    autoComplete="off"
+    spellCheck={true}
+    maxLength={1000}
+  />
+  {/* Wyślij button */}
+  <button
+    className="flex items-center justify-center px-5 h-10 rounded-xl font-bold bg-gradient-to-br from-indigo-500 to-blue-400 text-white shadow hover:from-indigo-600 hover:to-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+    onClick={handleSend}
+    disabled={!text.trim()}
+    type="button"
+  >
+    Wyślij
+  </button>
+</div>
+
+{/* Popup z wyszukiwarką GIFów */}
+{showGiphy && (
+  <div className="absolute left-0 right-0 bottom-14 bg-white border-t border-indigo-100 shadow-2xl rounded-b-2xl p-4 z-20">
+    <div className="flex gap-2 mb-2">
+      <input
+        value={gifSearch}
+        onChange={e => {
+          setGifSearch(e.target.value);
+          fetchGifs(e.target.value);
+        }}
+        className="border border-indigo-100 rounded-xl px-3 py-2 flex-1 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition placeholder-gray-400"
+        placeholder="Szukaj GIFa…"
+        autoFocus
+      />
+      <button
+        className="text-red-600 font-bold px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 transition"
+        onClick={() => setShowGiphy(false)}
+        type="button"
+      >
+        ✕
+      </button>
+    </div>
+    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+      {gifs.map(gif => (
+        <img
+          key={gif.id}
+          src={gif.images.fixed_height_small.url}
+          alt={gif.title}
+          className="w-24 h-24 object-cover rounded-xl cursor-pointer border border-indigo-100 hover:border-indigo-400 shadow transition"
+          onClick={() => handleSendGif(gif.images.fixed_height.url)}
         />
-        <button
-          className="bg-indigo-600 text-white px-3 rounded"
-          onClick={handleSend}
-        >
-          Wyślij
-        </button>
-      </div>
-      {/* Popup z wyszukiwarką GIFów */}
-      {showGiphy && (
-        <div className="absolute left-0 right-0 bottom-14 bg-white border-t shadow-lg p-4 z-20">
-          <div className="flex gap-2 mb-2">
-            <input
-              value={gifSearch}
-              onChange={e => {
-                setGifSearch(e.target.value);
-                fetchGifs(e.target.value);
-              }}
-              className="border rounded px-2 py-1 flex-1 text-sm"
-              placeholder="Szukaj GIFa..."
-              autoFocus
-            />
-            <button
-              className="text-red-600 font-bold px-2"
-              onClick={() => setShowGiphy(false)}
-            >
-              X
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-            {gifs.map(gif => (
-              <img
-                key={gif.id}
-                src={gif.images.fixed_height_small.url}
-                alt={gif.title}
-                className="w-24 h-24 object-cover rounded cursor-pointer border hover:border-indigo-500"
-                onClick={() => handleSendGif(gif.images.fixed_height.url)}
-              />
-            ))}
-            {gifs.length === 0 && <div className="text-gray-400">Brak wyników</div>}
-          </div>
-        </div>
-      )}
+      ))}
+      {gifs.length === 0 && <div className="text-gray-400">Brak wyników</div>}
+    </div>
+  </div>
+)}
+
+      
     </div>
   );
 }
