@@ -108,12 +108,14 @@ export default function Header({
             </button>
             {menuOpen && (
   <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-indigo-100 py-2 z-50 animate-fade-in">
-    <button
-      className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
-      onClick={() => { setMenuOpen(false); onProfile && onProfile(); }}
-    >
-      Profil
-    </button>
+<Link
+  to="/profile"
+  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700 block"
+  onClick={() => setMenuOpen(false)}
+>
+  Mój profil
+</Link>
+
     <button
       className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
       onClick={() => { setMenuOpen(false); onSettings && onSettings(); }}

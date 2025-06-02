@@ -219,24 +219,21 @@ export default function App() {
           }
         />
         <Route path="/my-events" element={<MyEventsPanel user={user} events={events} />} />
+        <Route
+    path="/profile"
+    element={
+      <UserProfilePage
+        user={user}
+        onUpdate={updatedUser => {
+          setUser(updatedUser);
+          // Możesz też zaktualizować usera w localStorage jeśli chcesz
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }}
+      />
+    }
+  />
       </Routes>
       <Footer />
-
-      {/* MODAL PROFILU */}
-      {showProfile && user && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <UserProfilePage
-            user={user}
-            onClose={() => setShowProfile(false)}
-            onUpdate={updatedUser => {
-              setUser(updatedUser);
-              fetch("https://gramytu.onrender.com/events")
-                .then(res => res.json())
-                .then(setEvents);
-            }}
-          />
-        </div>
-      )}
 
       {/* MODAL Z FORMULARZEM */}
       {showModal && (
@@ -329,8 +326,6 @@ export default function App() {
     onClose={() => setShowLogIn(false)}
   />
 )}
-
-
       {/* GLOBALNY PLUS */}
       <button
         onClick={() => {
