@@ -363,10 +363,30 @@ app.get('/events/:id/chat', async (req, res) => {
       return res.status(400).json({ error: "Nieprawidłowy format eventId" });
     }
     const eventObjectId = new Types.ObjectId(eventId);
+
+    // Pobierz wiadomości wraz z username i userId
     const messages = await ChatMessage.find({ eventId: eventObjectId })
       .sort({ createdAt: 1 })
       .select('username text createdAt userId');
-    res.json(messages);
+
+    // Pobierz wszystkie userId z wiadomości
+    const userIds = [...new Set(messages.map(m => m.userId.toString()))];
+    // Pobierz mapę userId -> avatar
+    const users = await User.find({ _id: { $in: userIds } }).select('_id avatar');
+    const avatarMap = {};
+    users.forEach(u => { avatarMap[u._id.toString()] = u.avatar; });
+
+    // Dołącz avatar do każdej wiadomości
+    const messagesWithAvatar = messages.map(m => ({
+      _id: m._id,
+      username: m.username,
+      userId: m.userId,
+      text: m.text,
+      createdAt: m.createdAt,
+      avatar: avatarMap[m.userId.toString()] || null
+    }));
+
+    res.json(messagesWithAvatar);
   } catch (error) {
     console.error("Błąd w /events/:id/chat:", error);
     res.status(500).json({ error: "Wewnętrzny błąd serwera" });
@@ -408,6 +428,10 @@ io.on('connection', (socket) => {
 
   socket.on('eventMessage', async ({ eventId, text }) => {
     if (!socket.user || !eventId || !text?.trim()) return;
+    // Pobierz avatar użytkownika
+    const userDoc = await User.findById(socket.user.userId).select('avatar');
+    const avatar = userDoc?.avatar || null;
+
     const msg = await ChatMessage.create({
       eventId,
       userId: socket.user.userId,
@@ -419,7 +443,8 @@ io.on('connection', (socket) => {
       username: msg.username,
       userId: msg.userId,
       text: msg.text,
-      createdAt: msg.createdAt
+      createdAt: msg.createdAt,
+      avatar // <-- DOŁĄCZ AVATAR!
     });
     console.log("Socket.io: eventMessage sent and saved", msg);
   });
@@ -439,6 +464,7 @@ io.on('connection', (socket) => {
     console.log("Socket.io: user disconnected");
   });
 });
+
 
 // --- GIPHY PROXY ENDPOINT Z DEBUGIEM ---
 console.log("DEBUG: process.env.GIPHY_API_KEY =", process.env.GIPHY_API_KEY);
