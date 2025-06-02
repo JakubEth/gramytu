@@ -9,7 +9,7 @@ import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
-import { io } from "socket.io-client/dist/socket.io.js";
+import { io } from "socket.io-client";
 
 const API_URL = "https://gramytu.onrender.com";
 const SOCKET_URL = API_URL;
@@ -21,7 +21,6 @@ const icons = {
   inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
-// FUNKCJA: za ile czasu event
 function timeToEvent(eventDate) {
   if (!eventDate) return "";
   const now = new Date();
@@ -31,28 +30,45 @@ function timeToEvent(eventDate) {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
   const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
-
   if (diffDays > 0) return `za ${diffDays} dni${diffHours > 0 ? `, ${diffHours}h` : ""}`;
   if (diffHours > 0) return `za ${diffHours}h${diffMinutes > 0 ? `, ${diffMinutes}min` : ""}`;
   return `za ${diffMinutes}min`;
 }
 
-// --- CZAT GRUPOWY ---
+// --- CZAT GRUPOWY Z HISTORIĄ ---
 function GroupChat({ eventId, user }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // Pobierz historię czatu przy każdym wejściu na czat!
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL, { transports: ["websocket"] });
+    if (!eventId) return;
+    fetch(`${API_URL}/events/${eventId}/chat`)
+      .then(res => res.json())
+      .then(data => {
+        setMessages(data || []);
+      })
+      .catch(err => {
+        console.error("Błąd pobierania historii czatu:", err);
+      });
+  }, [eventId]);
+
+  // Połącz z socket.io i nasłuchuj nowych wiadomości
+  useEffect(() => {
+    if (!eventId) return;
+    socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+
     socketRef.current.emit("joinEventChat", {
       eventId,
       token: localStorage.getItem("token"),
     });
+
     socketRef.current.on("eventMessage", (msg) => {
-      setMessages((msgs) => [...msgs, msg]);
+      setMessages(prev => [...prev, msg]);
     });
+
     return () => {
       socketRef.current.disconnect();
     };
@@ -75,8 +91,11 @@ function GroupChat({ eventId, user }) {
     <div className="flex flex-col h-96">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
+        {messages.length === 0 && (
+          <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
+        )}
         {messages.map((msg, i) => (
-          <div key={i} className="mb-1">
+          <div key={msg._id || i} className="mb-1">
             <b>{msg.username}:</b> {msg.text}
           </div>
         ))}
@@ -151,7 +170,6 @@ export default function LandingMap({ events, user, setEvents }) {
             >
               <Popup>
                 <div className="flex flex-row gap-3 min-w-[320px] max-w-[400px] items-start">
-                  {/* LEWO: ZDJĘCIE */}
                   {ev.image && (
                     <img
                       src={ev.image}
@@ -160,7 +178,6 @@ export default function LandingMap({ events, user, setEvents }) {
                       style={{ minWidth: 96, minHeight: 96, maxWidth: 96, maxHeight: 96 }}
                     />
                   )}
-                  {/* PRAWO: INFO */}
                   <div className="flex-1 flex flex-col">
                     <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
                     <div className="text-xs text-gray-500 mb-2">
@@ -191,7 +208,6 @@ export default function LandingMap({ events, user, setEvents }) {
                         Opłata za udział: {ev.price} zł
                       </div>
                     )}
-                    {/* Liczba miejsc - KLIKALNA */}
                     <button
                       className="text-xs text-indigo-700 underline mb-2 text-left"
                       style={{ cursor: "pointer" }}
@@ -199,7 +215,6 @@ export default function LandingMap({ events, user, setEvents }) {
                     >
                       Zapisani: {(ev.participants?.length || 0)}/{ev.maxParticipants}
                     </button>
-                    {/* Przycisk do czatu grupowego */}
                     {user && ev.participants?.some(id => id === user._id || (id?._id === user._id)) && (
                       <button
                         className="bg-indigo-700 text-white px-3 py-1 rounded mb-2"
@@ -269,28 +284,24 @@ export default function LandingMap({ events, user, setEvents }) {
         </MarkerClusterGroup>
       </MapContainer>
 
-      {/* MODAL PROFILU */}
       {showProfile && profileUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <UserProfile user={profileUser} onClose={() => setShowProfile(false)} />
         </div>
       )}
 
-      {/* MODAL KOMENTARZY */}
       {commentsModalEvent && (
         <Modal onClose={() => setCommentsModalEvent(null)}>
           <CommentsSection eventId={commentsModalEvent} user={user} />
         </Modal>
       )}
 
-      {/* MODAL UCZESTNIKÓW */}
       {participantsModalEvent && (
         <Modal onClose={() => setParticipantsModalEvent(null)}>
           <ParticipantsList eventId={participantsModalEvent} />
         </Modal>
       )}
 
-      {/* MODAL CZATU */}
       {chatModalEvent && (
         <Modal onClose={() => setChatModalEvent(null)}>
           <GroupChat eventId={chatModalEvent} user={user} />
