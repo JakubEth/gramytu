@@ -185,8 +185,8 @@ export default function OnboardingQuiz() {
       });
 
       if (!res.ok) throw new Error("Błąd zapisu");
-
-      navigate("/");
+      if (onUserUpdate) onUserUpdate();
+        navigate("/");
     } catch {
       setError("Błąd połączenia z serwerem.");
       setLoading(false);
@@ -194,7 +194,8 @@ export default function OnboardingQuiz() {
   }
 
   function handleSkip() {
-    navigate("/");
+    if (onUserUpdate) onUserUpdate();
+        navigate("/");
   }
 
   // Styl pełnoekranowy, gradient, pasek postępu

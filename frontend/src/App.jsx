@@ -131,6 +131,33 @@ function SuccessIcon() {
   );
 }
 
+function refreshUser() {
+  const token = localStorage.getItem("token");
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+      fetch(`https://gramytu.onrender.com/users/${decoded.userId}`)
+        .then(res => res.json())
+        .then(userFromDb => {
+          setUser({
+            _id: userFromDb._id,
+            username: userFromDb.username,
+            avatar: userFromDb.avatar
+          });
+        })
+        .catch(() => {
+          setUser(null);
+          localStorage.removeItem("token");
+        });
+    } catch {
+      setUser(null);
+      localStorage.removeItem("token");
+    }
+  } else {
+    setUser(null);
+  }
+}
+
 export default function App() {
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -248,7 +275,9 @@ export default function App() {
             />
           }
         />
-        <Route path="/onboarding" element={<OnboardingQuiz />} />
+        <Route path="/onboarding" element={
+  <OnboardingQuiz onUserUpdate={refreshUser} />
+} />
       </Routes>
 
       {!hideHeaderFooter && <Footer />}
