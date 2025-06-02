@@ -253,6 +253,15 @@ app.post('/events/:id/join', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// DODAJ ENDPOINT OPUSZCZANIA WYDARZENIA
+app.post('/events/:id/leave', auth, async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+  event.participants = event.participants.filter(id => id.toString() !== req.user._id.toString());
+  await event.save();
+  res.json({ ok: true });
+});
+
 app.get('/events/:id/participants', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id).populate('participants', 'username avatar');
@@ -338,16 +347,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  // POPRAWKA: handler participantsUpdate MUSI być tu!
+  socket.on("participantsUpdate", async ({ eventId }) => {
+    const event = await Event.findById(eventId).populate('participants', 'username avatar _id');
+    io.emit("participantsUpdate", { eventId, participants: event.participants });
+  });
+
   socket.on('disconnect', () => {
     console.log("Socket.io: user disconnected");
   });
 });
-
-socket.on("participantsUpdate", async ({ eventId }) => {
-  const event = await Event.findById(eventId).populate('participants', 'username avatar _id');
-  io.emit("participantsUpdate", { eventId, participants: event.participants });
-});
-
 
 const PORT = process.env.PORT || 10000;
 
