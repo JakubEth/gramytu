@@ -343,6 +343,12 @@ io.on('connection', (socket) => {
   });
 });
 
+socket.on("participantsUpdate", async ({ eventId }) => {
+  const event = await Event.findById(eventId).populate('participants', 'username avatar _id');
+  io.emit("participantsUpdate", { eventId, participants: event.participants });
+});
+
+
 const PORT = process.env.PORT || 10000;
 
 mongoose.connect(process.env.MONGO_URI)
