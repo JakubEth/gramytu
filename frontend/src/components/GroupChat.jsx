@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
+import "./GroupChat.css"; // <-- poprawny import
 
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
@@ -66,7 +67,6 @@ export default function GroupChat({ eventId, user }) {
     setText("");
   };
 
-  // Usuwanie wiadomości po prawym kliknięciu na własny dymek
   const handleRightClick = (e, msg) => {
     e.preventDefault();
     if (window.confirm("Usunąć tę wiadomość?")) {
@@ -85,7 +85,7 @@ export default function GroupChat({ eventId, user }) {
   return (
     <div className="flex flex-col h-96">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
-      <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
+      <div className="chatbox-messages">
         {(!messages || messages.length === 0) && (
           <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
         )}
@@ -94,39 +94,24 @@ export default function GroupChat({ eventId, user }) {
           return (
             <div
               key={msg._id || i}
-              className={`flex mb-2 ${isMine ? "justify-end" : "justify-start"}`}
+              className={`chatbox-row ${isMine ? "me" : "other"}`}
               onContextMenu={isMine ? (e) => handleRightClick(e, msg) : undefined}
               title={isMine ? "Prawy klik by usunąć" : undefined}
               style={{ userSelect: "text" }}
             >
-              <div
-                className={`max-w-[70%] rounded-xl px-3 py-2 shadow 
-                  ${isMine
-                    ? "bg-indigo-100 text-indigo-900 rounded-br-sm"
-                    : "bg-white text-gray-800 rounded-bl-sm border"}
-                  relative group`}
-                style={{
-                  cursor: isMine ? "context-menu" : "default",
-                  border: isMine ? "none" : "1px solid #e5e7eb"
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-xs text-gray-600">{msg.username}</span>
-                  <span className="text-[10px] text-gray-400">{formatDate(msg.createdAt)}</span>
+              <div className={`chatbox-bubble${isMine ? " me" : ""}`}>
+                <div className="chatbox-meta">
+                  <span>{msg.username}</span>
+                  <span>{formatDate(msg.createdAt)}</span>
                 </div>
-                <div className="break-words">{msg.text}</div>
-                {isMine && (
-                  <span className="hidden group-hover:inline absolute right-2 bottom-1 text-xs text-red-400">
-                    (usuń)
-                  </span>
-                )}
+                <div>{msg.text}</div>
               </div>
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-2">
         <input
           value={text}
           onChange={e => setText(e.target.value)}
