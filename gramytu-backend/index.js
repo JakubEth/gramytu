@@ -254,6 +254,17 @@ app.post('/events/:id/join', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Pobierz listę uczestników eventu po ID (z username i avatar)
+app.get('/events/:id/participants', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id).populate('participants', 'username avatar');
+    if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+    res.json(event.participants);
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
 
 const PORT = process.env.PORT || 4000;
 

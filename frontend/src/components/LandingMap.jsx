@@ -24,6 +24,7 @@ export default function LandingMap({ events, user, setEvents }) {
   const [profileUser, setProfileUser] = useState(null);
   const [organizerNames, setOrganizerNames] = useState({});
   const [commentsModalEvent, setCommentsModalEvent] = useState(null);
+  const [participantsModalEvent, setParticipantsModalEvent] = useState(null);
 
   // Funkcja do pobierania nicku organizatora po hostId
   const getOrganizerName = async (hostId, fallback) => {
@@ -116,10 +117,14 @@ export default function LandingMap({ events, user, setEvents }) {
                         Opłata za udział: {ev.price} zł
                       </div>
                     )}
-                    {/* Liczba miejsc */}
-                    <div className="text-xs text-gray-600 mb-2">
+                    {/* Liczba miejsc - KLIKALNA */}
+                    <button
+                      className="text-xs text-indigo-700 underline mb-2 text-left"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setParticipantsModalEvent(ev._id)}
+                    >
                       Zapisani: {(ev.participants?.length || 0)}/{ev.maxParticipants}
-                    </div>
+                    </button>
                     {/* Like i przycisk do komentarzy */}
                     <div className="flex items-center gap-2 mt-2">
                       <LikeButton eventId={ev._id} user={user} />
@@ -197,6 +202,13 @@ export default function LandingMap({ events, user, setEvents }) {
           <CommentsSection eventId={commentsModalEvent} user={user} />
         </Modal>
       )}
+
+      {/* MODAL UCZESTNIKÓW */}
+      {participantsModalEvent && (
+        <Modal onClose={() => setParticipantsModalEvent(null)}>
+          <ParticipantsList eventId={participantsModalEvent} />
+        </Modal>
+      )}
     </div>
   );
 }
@@ -215,6 +227,40 @@ function Modal({ children, onClose }) {
         </button>
         {children}
       </div>
+    </div>
+  );
+}
+
+// --- LISTA UCZESTNIKÓW ---
+function ParticipantsList({ eventId }) {
+  const [participants, setParticipants] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`https://gramytu.onrender.com/events/${eventId}/participants`)
+      .then(res => res.json())
+      .then(data => {
+        setParticipants(data);
+        setLoading(false);
+      });
+  }, [eventId]);
+
+  if (loading) return <div>Ładowanie...</div>;
+
+  return (
+    <div>
+      <div className="font-semibold text-lg mb-3">Uczestnicy wydarzenia</div>
+      {participants.length === 0 && <div className="text-gray-500">Brak zapisanych osób.</div>}
+      <ul className="space-y-2">
+        {participants.map(u => (
+          <li key={u._id} className="flex items-center gap-2">
+            {u.avatar && (
+              <img src={u.avatar} alt={u.username} className="w-8 h-8 rounded-full object-cover" />
+            )}
+            <span className="font-medium">{u.username}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
