@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
-import "./GroupChat.css"; // <-- poprawny import
+import "./GroupChat.css";
 
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
@@ -54,9 +54,22 @@ export default function GroupChat({ eventId, user }) {
     };
   }, [eventId]);
 
+  // Przewijaj tylko przy NOWEJ wiadomości (nie po wejściu w czat)
+  const prevLastMsgId = useRef();
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const lastMsg = messages[messages.length - 1];
+    if (
+      lastMsg &&
+      lastMsg._id !== prevLastMsgId.current &&
+      prevLastMsgId.current !== undefined // nie przewijaj przy pierwszym renderze
+    ) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 100);
+    }
+    prevLastMsgId.current = lastMsg ? lastMsg._id : undefined;
+  }, [messages, eventId]);
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -83,9 +96,13 @@ export default function GroupChat({ eventId, user }) {
   };
 
   return (
-    <div className="flex flex-col h-96">
+    <div className="flex flex-col h-full relative">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
-      <div className="chatbox-messages">
+      {/* Kontener na wiadomości, z padding-bottom na input */}
+      <div
+        className="chatbox-messages overflow-y-auto flex-1 pr-1"
+        style={{ overflowAnchor: "none", paddingBottom: 64 }}
+      >
         {(!messages || messages.length === 0) && (
           <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
         )}
@@ -111,7 +128,8 @@ export default function GroupChat({ eventId, user }) {
         })}
         <div ref={messagesEndRef} />
       </div>
-      <div className="flex gap-2 mt-2">
+      {/* Input przyklejony na samym dole */}
+      <div className="absolute left-0 right-0 bottom-0 bg-white border-t flex gap-2 p-2 z-10">
         <input
           value={text}
           onChange={e => setText(e.target.value)}

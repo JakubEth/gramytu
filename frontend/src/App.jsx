@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import MapView from "./components/MapView";
 import EventForm from "./components/EventForm";
 import Landing2025 from "./components/Landing2025";
 import Header from "./components/Header";
@@ -10,6 +9,7 @@ import LoginForm from "./components/LoginForm";
 import UserProfilePage from "./components/UserProfilePage";
 import EventsTinder from "./components/EventsTinder";
 import ProtectedRoute from "./components/ProtectedRoute";
+import MyEventsPanel from "./components/MyEventsPanel";
 import { jwtDecode } from "jwt-decode";
 
 // KOMPONENT LISTY EVENTÓW
@@ -218,6 +218,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/my-events" element={<MyEventsPanel user={user} events={events} />} />
       </Routes>
       <Footer />
 

@@ -107,27 +107,38 @@ export default function Header({
               />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-indigo-100 py-2 z-50 animate-fade-in">
-                <button
-                  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
-                  onClick={() => { setMenuOpen(false); onProfile && onProfile(); }}
-                >
-                  Profil
-                </button>
-                <button
-                  className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
-                  onClick={() => { setMenuOpen(false); onSettings && onSettings(); }}
-                >
-                  Ustawienia
-                </button>
-                <button
-                  className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
-                  onClick={() => { setMenuOpen(false); onLogout && onLogout(); }}
-                >
-                  Wyloguj
-                </button>
-              </div>
-            )}
+  <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-indigo-100 py-2 z-50 animate-fade-in">
+    <button
+      className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
+      onClick={() => { setMenuOpen(false); onProfile && onProfile(); }}
+    >
+      Profil
+    </button>
+    <button
+      className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
+      onClick={() => { setMenuOpen(false); onSettings && onSettings(); }}
+    >
+      Ustawienia
+    </button>
+    {/* NOWA OPCJA */}
+    <button
+      className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-indigo-700"
+      onClick={() => {
+        setMenuOpen(false);
+        navigate("/my-events");
+      }}
+    >
+      Moje wydarzenia
+    </button>
+    <button
+      className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+      onClick={() => { setMenuOpen(false); onLogout && onLogout(); }}
+    >
+      Wyloguj
+    </button>
+  </div>
+)}
+
           </div>
         )}
       </nav>
