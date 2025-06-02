@@ -3,10 +3,16 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const http = require('http');
 require('dotenv').config();
 
 const { Event, User } = require('./models');
 const app = express();
+const server = http.createServer(app);
+
+// --- SOCKET.IO SETUP ---
+const { Server } = require('socket.io');
+const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(cors());
 app.use(express.json());
@@ -28,13 +34,11 @@ const auth = async (req, res, next) => {
 
 // --- ENDPOINTY EVENTÓW ---
 
-// Pobierz wszystkie eventy
 app.get('/events', async (req, res) => {
   const events = await Event.find();
   res.json(events);
 });
 
-// KLUCZOWY ENDPOINT: Pobierz pojedynczy event po ID
 app.get('/events/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -53,23 +57,20 @@ app.post('/events', async (req, res) => {
     location: req.body.location,
     host: req.body.host,
     hostId: req.body.hostId,
-    contact: req.body.contact,
     type: req.body.type,
     tags: req.body.tags,
     likes: req.body.likes || [],
     comments: req.body.comments || [],
     image: req.body.image,
-    maxParticipants: req.body.maxParticipants, // <-- DODAJ TO
-    paid: req.body.paid,                       // <-- DODAJ TO
-    price: req.body.price,                     // <-- DODAJ TO
-    participants: req.body.participants || []  // <-- DODAJ TO
+    maxParticipants: req.body.maxParticipants,
+    paid: req.body.paid,
+    price: req.body.price,
+    participants: req.body.participants || []
   });
   await event.save();
   res.json(event);
 });
 
-
-// Like eventu
 app.post('/events/:id/like', auth, async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -96,7 +97,6 @@ app.post('/events/:id/unlike', auth, async (req, res) => {
   }
 });
 
-// Komentowanie eventu
 app.post('/events/:id/comment', auth, async (req, res) => {
   try {
     const { text } = req.body;
@@ -119,7 +119,6 @@ app.post('/events/:id/comment', auth, async (req, res) => {
   }
 });
 
-// Pobierz usera po ID
 app.get('/users/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -134,7 +133,6 @@ app.get('/users/:id', async (req, res) => {
   }
 });
 
-// Rejestracja
 app.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -163,7 +161,6 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Logowanie
 app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -191,7 +188,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// PATCH: zmiana nicku i update nicku w eventach + komentarzach
 app.patch('/users/:id', async (req, res) => {
   try {
     const { username, password, avatar } = req.body;
@@ -200,11 +196,9 @@ app.patch('/users/:id', async (req, res) => {
     if (avatar) update.avatar = avatar;
     if (password) update.password = await bcrypt.hash(password, 10);
 
-    // Pobierz starego usera
     const oldUser = await User.findById(req.params.id);
     if (!oldUser) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
 
-    // Jeśli zmieniono nick, zaktualizuj we wszystkich eventach i komentarzach
     if (username && username !== oldUser.username) {
       await Event.updateMany(
         { hostId: oldUser._id },
@@ -217,7 +211,6 @@ app.patch('/users/:id', async (req, res) => {
       );
     }
 
-    // Zaktualizuj usera
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ _id: user._id, username: user.username, avatar: user.avatar });
   } catch (error) {
@@ -226,10 +219,8 @@ app.patch('/users/:id', async (req, res) => {
   }
 });
 
-// DELETE /events/:id
 app.delete('/events/:id', auth, async (req, res) => {
   try {
-    // Usuwaj tylko jeśli user jest właścicielem eventu
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
     if (event.hostId.toString() !== req.user._id.toString()) {
@@ -254,7 +245,6 @@ app.post('/events/:id/join', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Pobierz listę uczestników eventu po ID (z username i avatar)
 app.get('/events/:id/participants', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id).populate('participants', 'username avatar');
@@ -265,12 +255,37 @@ app.get('/events/:id/participants', async (req, res) => {
   }
 });
 
+// --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---
+io.on('connection', (socket) => {
+  socket.on('joinEventChat', ({ eventId, token }) => {
+    try {
+      const user = jwt.verify(token, process.env.JWT_SECRET);
+      socket.join(eventId);
+      socket.user = user;
+      socket.eventId = eventId;
+    } catch (e) {
+      // Nieprawidłowy token
+    }
+  });
+
+  socket.on('eventMessage', async ({ eventId, text }) => {
+    if (!socket.user || !eventId || !text?.trim()) return;
+    io.to(eventId).emit('eventMessage', {
+      username: socket.user.username,
+      userId: socket.user.userId,
+      text,
+      createdAt: new Date()
+    });
+  });
+
+  socket.on('disconnect', () => {});
+});
 
 const PORT = process.env.PORT || 4000;
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    app.listen(PORT, () => console.log(`API działa na porcie ${PORT}`));
+    server.listen(PORT, () => console.log(`API działa na porcie ${PORT}`));
     console.log("Połączono z MongoDB");
   })
   .catch(err => {

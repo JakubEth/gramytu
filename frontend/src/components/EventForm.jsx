@@ -122,7 +122,6 @@ export default function EventForm({ onAdd, user }) {
     form.title.trim() &&
     form.description.trim() &&
     form.locationName.trim() &&
-    form.contact.trim() &&
     form.type.trim() &&
     date &&
     user?.username &&
@@ -144,7 +143,6 @@ export default function EventForm({ onAdd, user }) {
       },
       host: user.username,
       hostId: user._id,
-      contact: form.contact,
       type: form.type,
       tags,
       image: image || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne,
@@ -232,15 +230,6 @@ export default function EventForm({ onAdd, user }) {
             </div>
           </div>
           <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Kontakt do organizatora</label>
-            <input
-              name="contact"
-              placeholder="E-mail lub telefon"
-              value={form.contact}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-            />
           </div>
           <div className="mb-2">
             <label className="block mb-1 text-sm font-semibold text-gray-700">Typ wydarzenia</label>
@@ -259,7 +248,7 @@ export default function EventForm({ onAdd, user }) {
             </select>
           </div>
           <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Data wydarzenia</label>
+            <label className="block mb-1 text-sm font-semibold text-gray-700"></label>
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={pl}>
               <DatePicker
                 label="Data wydarzenia"

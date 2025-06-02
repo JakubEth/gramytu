@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -9,8 +9,10 @@ import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import UserProfile from "./UserProfile";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
+import { io } from "socket.io-client";
 
 const API_URL = "https://gramytu.onrender.com";
+const SOCKET_URL = API_URL;
 
 const icons = {
   planszowka: L.icon({ iconUrl: iconBoardgame, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
@@ -19,14 +21,94 @@ const icons = {
   inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
+// FUNKCJA: za ile czasu event
+function timeToEvent(eventDate) {
+  if (!eventDate) return "";
+  const now = new Date();
+  const date = new Date(eventDate);
+  const diffMs = date - now;
+  if (diffMs <= 0) return "Wydarzenie już się odbyło";
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+  const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+
+  if (diffDays > 0) return `za ${diffDays} dni${diffHours > 0 ? `, ${diffHours}h` : ""}`;
+  if (diffHours > 0) return `za ${diffHours}h${diffMinutes > 0 ? `, ${diffMinutes}min` : ""}`;
+  return `za ${diffMinutes}min`;
+}
+
+// --- CZAT GRUPOWY ---
+function GroupChat({ eventId, user }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    socketRef.current = io(SOCKET_URL, { transports: ["websocket"] });
+    socketRef.current.emit("joinEventChat", {
+      eventId,
+      token: localStorage.getItem("token"),
+    });
+    socketRef.current.on("eventMessage", (msg) => {
+      setMessages((msgs) => [...msgs, msg]);
+    });
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [eventId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = () => {
+    if (!text.trim()) return;
+    socketRef.current.emit("eventMessage", {
+      eventId,
+      text,
+    });
+    setText("");
+  };
+
+  return (
+    <div className="flex flex-col h-96">
+      <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
+      <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
+        {messages.map((msg, i) => (
+          <div key={i} className="mb-1">
+            <b>{msg.username}:</b> {msg.text}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          className="border rounded px-2 py-1 flex-1 text-sm"
+          placeholder="Napisz wiadomość..."
+          onKeyDown={e => e.key === "Enter" ? handleSend() : null}
+        />
+        <button
+          className="bg-indigo-600 text-white px-3 rounded"
+          onClick={handleSend}
+        >
+          Wyślij
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingMap({ events, user, setEvents }) {
   const [showProfile, setShowProfile] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
   const [organizerNames, setOrganizerNames] = useState({});
   const [commentsModalEvent, setCommentsModalEvent] = useState(null);
   const [participantsModalEvent, setParticipantsModalEvent] = useState(null);
+  const [chatModalEvent, setChatModalEvent] = useState(null);
 
-  // Funkcja do pobierania nicku organizatora po hostId
   const getOrganizerName = async (hostId, fallback) => {
     if (!hostId) return fallback || "Nieznany";
     if (organizerNames[hostId]) return organizerNames[hostId];
@@ -40,7 +122,6 @@ export default function LandingMap({ events, user, setEvents }) {
     }
   };
 
-  // Funkcja do usuwania eventu z listy (po stronie frontu)
   const handleDeleteEvent = (eventId) => {
     if (setEvents) {
       setEvents(prev => prev.filter(ev => ev._id !== eventId));
@@ -83,7 +164,7 @@ export default function LandingMap({ events, user, setEvents }) {
                   <div className="flex-1 flex flex-col">
                     <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
                     <div className="text-xs text-gray-500 mb-2">
-                      {ev.date?.slice(0, 10)} • {ev.location?.name}
+                      {timeToEvent(ev.date)} • {ev.location?.name}
                     </div>
                     <div className="text-sm text-gray-700 mb-2">{ev.description}</div>
                     {ev.tags?.length > 0 && (
@@ -104,14 +185,7 @@ export default function LandingMap({ events, user, setEvents }) {
                         setProfileUser={setProfileUser}
                         setShowProfile={setShowProfile}
                       />
-                      {ev.contact && (
-                        <>
-                          <br />
-                          Kontakt: <span className="text-gray-600">{ev.contact}</span>
-                        </>
-                      )}
                     </div>
-                    {/* --- OPŁATA ZA UDZIAŁ --- */}
                     {ev.paid && (
                       <div className="text-xs text-indigo-700 font-semibold mb-1">
                         Opłata za udział: {ev.price} zł
@@ -125,7 +199,15 @@ export default function LandingMap({ events, user, setEvents }) {
                     >
                       Zapisani: {(ev.participants?.length || 0)}/{ev.maxParticipants}
                     </button>
-                    {/* Like i przycisk do komentarzy */}
+                    {/* Przycisk do czatu grupowego */}
+                    {user && ev.participants?.some(id => id === user._id || (id?._id === user._id)) && (
+                      <button
+                        className="bg-indigo-700 text-white px-3 py-1 rounded mb-2"
+                        onClick={() => setChatModalEvent(ev._id)}
+                      >
+                        Dołącz do czatu grupowego
+                      </button>
+                    )}
                     <div className="flex items-center gap-2 mt-2">
                       <LikeButton eventId={ev._id} user={user} />
                       <button
@@ -135,7 +217,6 @@ export default function LandingMap({ events, user, setEvents }) {
                         Komentarze
                       </button>
                     </div>
-                    {/* --- DOŁĄCZANIE I PŁATNOŚĆ --- */}
                     {(ev.participants?.length || 0) < ev.maxParticipants ? (
                       <button
                         onClick={async () => {
@@ -157,7 +238,6 @@ export default function LandingMap({ events, user, setEvents }) {
                     ) : (
                       <div className="text-red-500 font-semibold mt-2">Brak wolnych miejsc</div>
                     )}
-                    {/* --- USUWANIE EVENTU --- */}
                     {user && ev.hostId === user._id && (
                       <button
                         onClick={async () => {
@@ -209,11 +289,17 @@ export default function LandingMap({ events, user, setEvents }) {
           <ParticipantsList eventId={participantsModalEvent} />
         </Modal>
       )}
+
+      {/* MODAL CZATU */}
+      {chatModalEvent && (
+        <Modal onClose={() => setChatModalEvent(null)}>
+          <GroupChat eventId={chatModalEvent} user={user} />
+        </Modal>
+      )}
     </div>
   );
 }
 
-// --- MODAL ---
 function Modal({ children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -231,13 +317,12 @@ function Modal({ children, onClose }) {
   );
 }
 
-// --- LISTA UCZESTNIKÓW ---
 function ParticipantsList({ eventId }) {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`https://gramytu.onrender.com/events/${eventId}/participants`)
+    fetch(`${API_URL}/events/${eventId}/participants`)
       .then(res => res.json())
       .then(data => {
         setParticipants(data);
@@ -265,7 +350,6 @@ function ParticipantsList({ eventId }) {
   );
 }
 
-// --- LIKE BUTTON ---
 function LikeButton({ eventId, user }) {
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -326,7 +410,6 @@ function LikeButton({ eventId, user }) {
   );
 }
 
-// --- KOMENTARZE ---
 function CommentsSection({ eventId, user }) {
   const [comments, setComments] = useState([]);
   const [text, setText] = useState("");
@@ -401,7 +484,6 @@ function CommentsSection({ eventId, user }) {
   );
 }
 
-// --- ORGANIZATOR ---
 function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile }) {
   const [name, setName] = useState(fallback);
 
