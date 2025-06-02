@@ -57,7 +57,13 @@ app.get('/events/:id', async (req, res) => {
   }
 });
 
+// --- UTWÓRZ EVENT: organizator zawsze w participants ---
 app.post('/events', async (req, res) => {
+  // Dodaj hostId do participants, jeśli nie ma
+  let participants = req.body.participants || [];
+  if (!participants.map(id => id.toString()).includes(req.body.hostId)) {
+    participants = [req.body.hostId, ...participants];
+  }
   const event = new Event({
     title: req.body.title,
     description: req.body.description,
@@ -73,7 +79,7 @@ app.post('/events', async (req, res) => {
     maxParticipants: req.body.maxParticipants,
     paid: req.body.paid,
     price: req.body.price,
-    participants: req.body.participants || []
+    participants
   });
   await event.save();
   res.json(event);
@@ -241,22 +247,31 @@ app.delete('/events/:id', auth, async (req, res) => {
   }
 });
 
+// --- DOŁĄCZANIE: organizator nie może dołączyć, jest zawsze uczestnikiem ---
 app.post('/events/:id/join', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+  // Blokada dla organizatora
+  if (event.hostId.toString() === req.user._id.toString()) {
+    return res.status(400).json({ error: "Organizator już jest uczestnikiem" });
+  }
   if (event.participants.length >= event.maxParticipants)
     return res.status(400).json({ error: "Brak wolnych miejsc" });
-  if (event.participants.includes(req.user._id))
+  if (event.participants.map(id => id.toString()).includes(req.user._id.toString()))
     return res.status(400).json({ error: "Już jesteś zapisany" });
   event.participants.push(req.user._id);
   await event.save();
   res.json({ ok: true });
 });
 
-// DODAJ ENDPOINT OPUSZCZANIA WYDARZENIA
+// --- OPUSZCZANIE: organizator nie może opuścić eventu ---
 app.post('/events/:id/leave', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
+  // Blokada dla organizatora
+  if (event.hostId.toString() === req.user._id.toString()) {
+    return res.status(400).json({ error: "Organizator nie może opuścić wydarzenia" });
+  }
   event.participants = event.participants.filter(id => id.toString() !== req.user._id.toString());
   await event.save();
   res.json({ ok: true });
@@ -347,7 +362,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // POPRAWKA: handler participantsUpdate MUSI być tu!
   socket.on("participantsUpdate", async ({ eventId }) => {
     const event = await Event.findById(eventId).populate('participants', 'username avatar _id');
     io.emit("participantsUpdate", { eventId, participants: event.participants });

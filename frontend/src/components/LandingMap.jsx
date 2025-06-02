@@ -503,6 +503,7 @@ export default function LandingMap({ events, user, setEvents }) {
         <MarkerClusterGroup chunkedLoading>
           {events.map(ev => {
             const participants = participantsMap[ev._id] || ev.participants || [];
+            const isOrganizer = user && ev.hostId === user._id;
             const isUserParticipant = user && participants.some(p => p._id === user._id || p === user._id);
             return (
               <Marker
@@ -569,7 +570,8 @@ export default function LandingMap({ events, user, setEvents }) {
                           Komentarze
                         </button>
                       </div>
-                      {(participants.length < ev.maxParticipants) && !isUserParticipant && (
+                      {/* --- PRZYCISKI DOŁĄCZ/OPUŚĆ/CZAT/INFO ORGANIZATORA --- */}
+                      {!isOrganizer && (participants.length < ev.maxParticipants) && !isUserParticipant && (
                         <button
                           onClick={async () => {
                             if (ev.paid) {
@@ -583,21 +585,24 @@ export default function LandingMap({ events, user, setEvents }) {
                           {ev.paid ? `Opłać udział (${ev.price} zł)` : "Dołącz"}
                         </button>
                       )}
+                      {!isOrganizer && isUserParticipant && (
+                        <button
+                          onClick={async () => await handleLeave(ev._id)}
+                          className="bg-red-600 text-white px-4 py-1 rounded mt-2"
+                        >
+                          Opuść wydarzenie
+                        </button>
+                      )}
                       {isUserParticipant && (
-                        <>
-                          <button
-                            onClick={async () => await handleLeave(ev._id)}
-                            className="bg-red-600 text-white px-4 py-1 rounded mt-2"
-                          >
-                            Opuść wydarzenie
-                          </button>
-                          <button
-                            className="bg-indigo-700 text-white px-3 py-1 rounded mb-2 mt-2"
-                            onClick={() => setChatModalEvent(ev._id)}
-                          >
-                            Dołącz do czatu grupowego
-                          </button>
-                        </>
+                        <button
+                          className="bg-indigo-700 text-white px-3 py-1 rounded mb-2 mt-2"
+                          onClick={() => setChatModalEvent(ev._id)}
+                        >
+                          Dołącz do czatu grupowego
+                        </button>
+                      )}
+                      {isOrganizer && (
+                        <div className="text-green-700 font-semibold mt-2">Jesteś organizatorem i uczestnikiem wydarzenia</div>
                       )}
                       {(participants.length >= ev.maxParticipants) && !isUserParticipant && (
                         <div className="text-red-500 font-semibold mt-2">Brak wolnych miejsc</div>
