@@ -601,9 +601,6 @@ export default function LandingMap({ events, user, setEvents }) {
                           Dołącz do czatu grupowego
                         </button>
                       )}
-                      {isOrganizer && (
-                        <div className="text-green-700 font-semibold mt-2">Jesteś organizatorem i uczestnikiem wydarzenia</div>
-                      )}
                       {(participants.length >= ev.maxParticipants) && !isUserParticipant && (
                         <div className="text-red-500 font-semibold mt-2">Brak wolnych miejsc</div>
                       )}
