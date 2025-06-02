@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   // NOWE POLA:
   isAdult: { type: Boolean, default: null }, // pełnoletni
-  favoriteEventType: String,
+  favoriteEventType: [String],
   preferredEventSize: String,
   preferredCategories: [String],
   preferredTags: [String],
