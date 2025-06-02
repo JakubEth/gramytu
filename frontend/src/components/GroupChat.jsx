@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 
 const SOCKET_URL = "https://gramytu.onrender.com";
+const API_URL = "https://gramytu.onrender.com";
 
 export default function GroupChat({ eventId, user }) {
   const [messages, setMessages] = useState([]);
@@ -9,6 +10,14 @@ export default function GroupChat({ eventId, user }) {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // Pobierz historię czatu przy wejściu na event
+  useEffect(() => {
+    fetch(`${API_URL}/events/${eventId}/chat`)
+      .then(res => res.json())
+      .then(data => setMessages(data || []));
+  }, [eventId]);
+
+  // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, { transports: ["websocket"] });
     socketRef.current.emit("joinEventChat", {
@@ -23,6 +32,7 @@ export default function GroupChat({ eventId, user }) {
     };
   }, [eventId]);
 
+  // Auto-scroll na dół po każdej nowej wiadomości
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

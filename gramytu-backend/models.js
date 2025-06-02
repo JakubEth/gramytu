@@ -49,7 +49,17 @@ const EventSchema = new mongoose.Schema({
   price: { type: Number, default: 0 } // kwota w złotych
 });
 
+// MODEL WIADOMOŚCI CZATU GRUPOWEGO
+const ChatMessageSchema = new mongoose.Schema({
+  eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  username: String,
+  text: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
 module.exports = {
   User: mongoose.model('User', UserSchema),
   Event: mongoose.model('Event', EventSchema),
+  ChatMessage: mongoose.model('ChatMessage', ChatMessageSchema)
 };

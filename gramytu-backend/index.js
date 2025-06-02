@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const http = require('http');
 require('dotenv').config();
 
-const { Event, User } = require('./models');
+const { Event, User, ChatMessage } = require('./models');
 const app = express();
 const server = http.createServer(app);
 
@@ -255,6 +255,15 @@ app.get('/events/:id/participants', async (req, res) => {
   }
 });
 
+// --- TRWAŁY CZAT GRUPOWY ---
+// Pobierz historię czatu dla eventu
+app.get('/events/:id/chat', async (req, res) => {
+  const messages = await ChatMessage.find({ eventId: req.params.id })
+    .sort({ createdAt: 1 })
+    .select('username text createdAt userId');
+  res.json(messages);
+});
+
 // --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---
 io.on('connection', (socket) => {
   socket.on('joinEventChat', ({ eventId, token }) => {
@@ -270,11 +279,18 @@ io.on('connection', (socket) => {
 
   socket.on('eventMessage', async ({ eventId, text }) => {
     if (!socket.user || !eventId || !text?.trim()) return;
-    io.to(eventId).emit('eventMessage', {
-      username: socket.user.username,
+    // ZAPISZ WIADOMOŚĆ DO BAZY
+    const msg = await ChatMessage.create({
+      eventId,
       userId: socket.user.userId,
+      username: socket.user.username,
       text,
-      createdAt: new Date()
+    });
+    io.to(eventId).emit('eventMessage', {
+      username: msg.username,
+      userId: msg.userId,
+      text: msg.text,
+      createdAt: msg.createdAt
     });
   });
 
