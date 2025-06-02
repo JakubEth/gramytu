@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
-// Formatowanie daty
 function formatDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -21,7 +20,6 @@ export default function GroupChat({ eventId, user }) {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Pobierz historię czatu przy każdym wejściu na czat!
   useEffect(() => {
     if (!eventId) {
       setMessages([]);
@@ -33,7 +31,6 @@ export default function GroupChat({ eventId, user }) {
       .catch(() => setMessages([]));
   }, [eventId]);
 
-  // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
     if (!eventId) return;
     socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
