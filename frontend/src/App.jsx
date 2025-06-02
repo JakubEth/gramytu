@@ -303,47 +303,33 @@ export default function App() {
 
       {/* MODAL REJESTRACJI */}
       {showSignUp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs relative">
-            <button
-              onClick={() => setShowSignUp(false)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              aria-label="Zamknij"
-            >
-              ×
-            </button>
-            <RegisterForm onSuccess={data => {
-              if (data && data.token && data.user) {
-                localStorage.setItem("token", data.token);
-                setUser(data.user);
-              }
-              setShowSignUp(false);
-            }} />
-          </div>
-        </div>
-      )}
+  <RegisterForm
+    onSuccess={data => {
+      if (data && data.token && data.user) {
+        localStorage.setItem("token", data.token);
+        setUser(data.user);
+      }
+      setShowSignUp(false);
+    }}
+    onClose={() => setShowSignUp(false)}
+  />
+)}
+
 
       {/* MODAL LOGOWANIA */}
       {!loadingUser && showLogIn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xs relative">
-            <button
-              onClick={() => setShowLogIn(false)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-              aria-label="Zamknij"
-            >
-              ×
-            </button>
-            <LoginForm onSuccess={data => {
-              if (data && data.token && data.user) {
-                localStorage.setItem("token", data.token);
-                setUser(data.user);
-              }
-              setShowLogIn(false);
-            }} />
-          </div>
-        </div>
-      )}
+  <LoginForm
+    onSuccess={data => {
+      if (data && data.token && data.user) {
+        localStorage.setItem("token", data.token);
+        setUser(data.user);
+      }
+      setShowLogIn(false);
+    }}
+    onClose={() => setShowLogIn(false)}
+  />
+)}
+
 
       {/* GLOBALNY PLUS */}
       <button

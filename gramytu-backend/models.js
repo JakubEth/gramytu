@@ -1,11 +1,28 @@
 const mongoose = require('mongoose');
 
+// --- Użytkownik ---
 const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    minlength: 3,
+    maxlength: 24,
+    trim: true
+  },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true,
+    lowercase: true,
+    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  },
+  password: { type: String, required: true, minlength: 8 },
   avatar: String
 });
 
+// --- Wydarzenie ---
 const EventSchema = new mongoose.Schema({
   title: String,
   description: String,
@@ -49,7 +66,7 @@ const EventSchema = new mongoose.Schema({
   price: { type: Number, default: 0 } // kwota w złotych
 });
 
-// MODEL WIADOMOŚCI CZATU GRUPOWEGO
+// --- Wiadomość czatu grupowego ---
 const ChatMessageSchema = new mongoose.Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

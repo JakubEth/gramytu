@@ -149,31 +149,38 @@ app.get('/users/:id', async (req, res) => {
 
 app.post('/register', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Nick i hasło są wymagane" });
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "Nick, e-mail i hasło są wymagane" });
     }
-    const existingUser = await User.findOne({ username });
+    // Sprawdź czy nick lub email już istnieje
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
-      return res.status(409).json({ error: "Nick jest już zajęty" });
+      if (existingUser.username === username) {
+        return res.status(409).json({ error: "Nick jest już zajęty" });
+      }
+      if (existingUser.email === email) {
+        return res.status(409).json({ error: "Ten e-mail jest już zarejestrowany" });
+      }
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword });
+    const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
     const token = jwt.sign(
-      { userId: newUser._id, username: newUser.username },
+      { userId: newUser._id, username: newUser.username, email: newUser.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
     res.status(201).json({
       token,
-      user: { _id: newUser._id, username: newUser.username }
+      user: { _id: newUser._id, username: newUser.username, email: newUser.email }
     });
   } catch (error) {
     console.error("Błąd rejestracji:", error);
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
+
 
 app.post('/login', async (req, res) => {
   try {
