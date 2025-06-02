@@ -16,7 +16,7 @@ export default function GroupChat({ eventId, user }) {
   }, [eventId]);
 
   // Pobierz historię czatu PRZY KAŻDYM WEJŚCIU na czat
-  const fetchHistory = () => {
+  useEffect(() => {
     console.log("fetchHistory: eventId =", eventId);
     fetch(`${API_URL}/events/${eventId}/chat`)
       .then(res => res.json())
@@ -27,20 +27,17 @@ export default function GroupChat({ eventId, user }) {
       .catch(err => {
         console.error("Błąd pobierania historii czatu:", err);
       });
-  };
-
-  useEffect(() => {
-    fetchHistory();
   }, [eventId]);
 
   // Połącz z socket.io i nasłuchuj nowych wiadomości
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+
     socketRef.current.on("connect", () => {
       console.log("Socket.io connected:", socketRef.current.id);
     });
     socketRef.current.on("connect_error", (err) => {
-      console.error("Socket.IO connect_error:", err.message);
+      console.error("Socket.IO connect_error:", err.message, err);
     });
     socketRef.current.on("disconnect", (reason) => {
       console.warn("Socket.IO disconnected:", reason);
@@ -53,7 +50,7 @@ export default function GroupChat({ eventId, user }) {
 
     socketRef.current.on("eventMessage", (msg) => {
       console.log("ODEBRANO eventMessage z socket.io:", msg);
-      fetchHistory();
+      setMessages(prev => [...prev, msg]);
     });
 
     return () => {
@@ -64,6 +61,7 @@ export default function GroupChat({ eventId, user }) {
   // Auto-scroll na dół po każdej nowej wiadomości
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    console.log("Aktualne wiadomości:", messages);
   }, [messages]);
 
   const handleSend = () => {
