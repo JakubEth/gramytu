@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import EventForm from "./components/EventForm";
 import Landing2025 from "./components/Landing2025";
 import Header from "./components/Header";
@@ -139,10 +139,16 @@ export default function App() {
   const [showLogIn, setShowLogIn] = useState(false);
   const [user, setUser] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true); // FLAGA ŁADOWANIA
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Ukryj header/footer na /onboarding
+  const hideHeaderFooter = location.pathname === "/onboarding";
 
   useEffect(() => {
-    setLoadingUser(true); // <-- start ładowania
+    setLoadingUser(true);
     fetch("https://gramytu.onrender.com/events")
       .then(res => res.json())
       .then(setEvents);
@@ -159,7 +165,7 @@ export default function App() {
               username: userFromDb.username,
               avatar: userFromDb.avatar
             });
-            setLoadingUser(false); // <-- koniec ładowania
+            setLoadingUser(false);
           })
           .catch(() => {
             setUser(null);
@@ -176,6 +182,16 @@ export default function App() {
     }
   }, []);
 
+  // Ochrona trasy /onboarding (przekieruj na /login jeśli nie ma tokena)
+  useEffect(() => {
+    if (
+      location.pathname === "/onboarding" &&
+      !localStorage.getItem("token")
+    ) {
+      navigate("/login", { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const handleAdd = event => {
     setEvents(e => [...e, event]);
     setShowModal(false);
@@ -188,26 +204,26 @@ export default function App() {
   };
   const handleProfile = () => setShowProfile(true);
   const handleSettings = () => alert("Ustawienia (do zaimplementowania)");
-
-  // Funkcja do otwierania modala logowania
   const openLoginModal = () => setShowLogIn(true);
 
-  // OPCJONALNIE: Spinner podczas ładowania usera
   if (loadingUser) {
     return <div className="w-full h-screen flex items-center justify-center">Ładowanie...</div>;
   }
 
   return (
     <>
-      <Header
-        onOpenAddEvent={() => setShowModal(true)}
-        onOpenSignUp={() => setShowSignUp(true)}
-        onOpenLogIn={() => setShowLogIn(true)}
-        user={user}
-        onLogout={handleLogout}
-        onProfile={handleProfile}
-        onSettings={handleSettings}
-      />
+      {!hideHeaderFooter && (
+        <Header
+          onOpenAddEvent={() => setShowModal(true)}
+          onOpenSignUp={() => setShowSignUp(true)}
+          onOpenLogIn={() => setShowLogIn(true)}
+          user={user}
+          onLogout={handleLogout}
+          onProfile={handleProfile}
+          onSettings={handleSettings}
+        />
+      )}
+
       <Routes>
         <Route path="/" element={<Landing2025 events={events} user={user}/>} />
         <Route path="/events" element={<EventsList />} />
@@ -221,21 +237,21 @@ export default function App() {
         />
         <Route path="/my-events" element={<MyEventsPanel user={user} events={events} />} />
         <Route
-    path="/profile"
-    element={
-      <UserProfilePage
-        user={user}
-        onUpdate={updatedUser => {
-          setUser(updatedUser);
-          // Możesz też zaktualizować usera w localStorage jeśli chcesz
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-        }}
-      />
-    }
-  />
-   <Route path="/onboarding" element={<OnboardingQuiz />} />
+          path="/profile"
+          element={
+            <UserProfilePage
+              user={user}
+              onUpdate={updatedUser => {
+                setUser(updatedUser);
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+              }}
+            />
+          }
+        />
+        <Route path="/onboarding" element={<OnboardingQuiz />} />
       </Routes>
-      <Footer />
+
+      {!hideHeaderFooter && <Footer />}
 
       {/* MODAL Z FORMULARZEM */}
       {showModal && (
@@ -302,32 +318,32 @@ export default function App() {
 
       {/* MODAL REJESTRACJI */}
       {showSignUp && (
-  <RegisterForm
-    onSuccess={data => {
-      if (data && data.token && data.user) {
-        localStorage.setItem("token", data.token);
-        setUser(data.user);
-      }
-      setShowSignUp(false);
-    }}
-    onClose={() => setShowSignUp(false)}
-  />
-)}
-
+        <RegisterForm
+          onSuccess={data => {
+            if (data && data.token && data.user) {
+              localStorage.setItem("token", data.token);
+              setUser(data.user);
+            }
+            setShowSignUp(false);
+          }}
+          onClose={() => setShowSignUp(false)}
+        />
+      )}
 
       {/* MODAL LOGOWANIA */}
       {!loadingUser && showLogIn && (
-  <LoginForm
-    onSuccess={data => {
-      if (data && data.token && data.user) {
-        localStorage.setItem("token", data.token);
-        setUser(data.user);
-      }
-      setShowLogIn(false);
-    }}
-    onClose={() => setShowLogIn(false)}
-  />
-)}
+        <LoginForm
+          onSuccess={data => {
+            if (data && data.token && data.user) {
+              localStorage.setItem("token", data.token);
+              setUser(data.user);
+            }
+            setShowLogIn(false);
+          }}
+          onClose={() => setShowLogIn(false)}
+        />
+      )}
+
       {/* GLOBALNY PLUS */}
       <button
         onClick={() => {

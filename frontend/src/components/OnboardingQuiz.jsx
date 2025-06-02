@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+// Przykładowa autoryzacja (dostosuj do swojego systemu!)
+function useAuth() {
+  // Przykład: token w localStorage
+  return !!localStorage.getItem("token");
+}
 
 const preferenceQuestions = [
   {
     question: "Czy jesteś pełnoletni?",
     type: "isAdult",
     options: ["Tak", "Nie"],
-    required: true
+    required: true,
+    multi: false
   },
   {
     question: "Które z tych wydarzeń wybierasz najchętniej?",
@@ -20,12 +27,15 @@ const preferenceQuestions = [
       "Wydarzenie charytatywne",
       "Wykład lub seminarium",
       "Inne"
-    ]
+    ],
+    multi: true,
+    max: 3
   },
   {
     question: "Wolisz wydarzenia:",
     type: "preferredEventSize",
-    options: ["Kameralne (do 10 osób)", "Średnie (10-30 osób)", "Duże (30+ osób)"]
+    options: ["Kameralne (do 10 osób)", "Średnie (10-30 osób)", "Duże (30+ osób)"],
+    multi: false
   },
   {
     question: "Które kategorie eventów najbardziej Cię interesują?",
@@ -39,7 +49,8 @@ const preferenceQuestions = [
       "Nauka/technologia",
       "Inne"
     ],
-    multi: true
+    multi: true,
+    max: 4
   },
   {
     question: "Jakie tagi najlepiej opisują Twoje zainteresowania?",
@@ -54,12 +65,14 @@ const preferenceQuestions = [
       "wolontariat",
       "inne"
     ],
-    multi: true
+    multi: true,
+    max: 5
   },
   {
     question: "Wydarzenia online czy offline?",
     type: "preferredMode",
-    options: ["Online", "Offline", "Bez znaczenia"]
+    options: ["Online", "Offline", "Bez znaczenia"],
+    multi: false
   }
 ];
 
@@ -80,18 +93,29 @@ export default function OnboardingQuiz() {
   const user = location.state?.user;
   const token = location.state?.token;
 
+  // Ochrona trasy (tylko dla zalogowanych)
+  const isAuth = useAuth();
+  useEffect(() => {
+    if (!isAuth) navigate("/login", { replace: true });
+  }, [isAuth, navigate]);
+
   const [step, setStep] = useState(0);
   const [prefAnswers, setPrefAnswers] = useState({});
   const [mbtiAnswers, setMbtiAnswers] = useState(Array(mbtiQuestions.length).fill(null));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Obsługa odpowiedzi preferencyjnych
-  function handlePrefSelect(type, value, multi) {
+  function handlePrefSelect(type, value, multi, max) {
     setPrefAnswers(a => {
       if (multi) {
         const prev = a[type] || [];
-        return { ...a, [type]: prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value] };
+        if (prev.includes(value)) {
+          return { ...a, [type]: prev.filter(v => v !== value) };
+        } else if (!max || prev.length < max) {
+          return { ...a, [type]: [...prev, value] };
+        } else {
+          return a; // nie dodawaj więcej niż max
+        }
       } else {
         return { ...a, [type]: value };
       }
@@ -100,14 +124,15 @@ export default function OnboardingQuiz() {
   }
 
   function nextPref() {
-    if (preferenceQuestions[step].required && !prefAnswers[preferenceQuestions[step].type]) {
+    const q = preferenceQuestions[step];
+    const val = prefAnswers[q.type];
+    if (q.required && (!val || (q.multi && val.length === 0))) {
       setError("To pytanie jest obowiązkowe!");
       return;
     }
     setStep(s => s + 1);
   }
 
-  // Obsługa odpowiedzi MBTI
   function handleMbtiSelect(idx, value) {
     const newMbti = [...mbtiAnswers];
     newMbti[idx] = value;
@@ -123,7 +148,6 @@ export default function OnboardingQuiz() {
     setStep(s => s + 1);
   }
 
-  // Algorytm MBTI (prosty, do rozbudowy)
   function calculateMBTI() {
     let EI = 0, SN = 0, TF = 0, JP = 0;
     mbtiQuestions.forEach((q, i) => {
@@ -141,12 +165,27 @@ export default function OnboardingQuiz() {
     setError("");
     const mbtiType = calculateMBTI();
     try {
+      const body = {
+        ...prefAnswers,
+        mbtiType,
+        isAdult: prefAnswers.isAdult === "Tak"
+      };
+      // Usuń puste tablice
+      if (Array.isArray(body.preferredCategories) && body.preferredCategories.length === 0) {
+        delete body.preferredCategories;
+      }
+      if (Array.isArray(body.preferredTags) && body.preferredTags.length === 0) {
+        delete body.preferredTags;
+      }
+
       const res = await fetch(`https://gramytu.onrender.com/users/${user._id}/preferences`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...prefAnswers, mbtiType, isAdult: prefAnswers.isAdult === "Tak" })
+        body: JSON.stringify(body)
       });
-      // Niezależnie od wyniku, przekieruj do home
+
+      if (!res.ok) throw new Error("Błąd zapisu");
+
       navigate("/");
     } catch {
       setError("Błąd połączenia z serwerem.");
@@ -158,97 +197,134 @@ export default function OnboardingQuiz() {
     navigate("/");
   }
 
-  // Render preferencji
+  // Styl pełnoekranowy, gradient, pasek postępu
+  const gradientBg = "bg-gradient-to-br from-indigo-400 via-indigo-100 to-amber-100";
+  const stepTotal = preferenceQuestions.length + mbtiQuestions.length;
+  const progress = Math.round((step + 1) / stepTotal * 100);
+
+  // PREFERENCJE
   if (step < preferenceQuestions.length) {
     const q = preferenceQuestions[step];
+    const selected = prefAnswers[q.type] || (q.multi ? [] : "");
     return (
-      <div className="min-h-screen flex items-center justify-center bg-indigo-50">
-        <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl flex flex-col gap-6">
-          <h2 className="text-2xl font-bold text-indigo-700 text-center">Twój profil wydarzeń</h2>
-          <div>
-            <div className="font-semibold mb-2">{q.question}</div>
-            <div className="flex flex-col gap-2">
-              {q.options.map((opt, i) => (
-                <button
-                  key={i}
-                  className={`px-4 py-2 rounded-lg border transition ${
-                    q.multi
-                      ? (prefAnswers[q.type] || []).includes(opt)
-                        ? "bg-indigo-600 text-white"
-                        : "bg-indigo-50"
-                      : prefAnswers[q.type] === opt
-                      ? "bg-indigo-600 text-white"
-                      : "bg-indigo-50"
-                  }`}
-                  onClick={() => handlePrefSelect(q.type, opt, q.multi)}
-                >
-                  {opt}
-                </button>
-              ))}
+      <div className={`min-h-screen w-full flex flex-col items-center justify-center ${gradientBg} transition-all duration-700`}>
+        <div className="absolute top-0 left-0 w-full h-2 bg-indigo-200">
+          <div className="h-2 bg-indigo-600 transition-all duration-500" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="flex-1 flex flex-col justify-center items-center w-full">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-indigo-800 text-center drop-shadow mb-12 animate-fade-in">
+            {step === 0 ? "Zacznijmy od kilku pytań!" : "Dalej! Poznajmy Twoje preferencje"}
+          </h2>
+          <div className="w-full max-w-2xl flex flex-col items-center gap-8 animate-slide-up">
+            <div className="text-2xl md:text-3xl font-bold text-indigo-700 text-center">{q.question}</div>
+            <div className="flex flex-wrap justify-center gap-4 w-full">
+              {q.options.map((opt, i) => {
+                const isSelected = q.multi ? selected.includes(opt) : selected === opt;
+                const isDisabled = q.multi && !isSelected && selected.length >= (q.max || 99);
+                return (
+                  <button
+                    key={i}
+                    className={`
+                      px-8 py-4 rounded-2xl shadow-lg text-lg font-semibold transition
+                      border-2 border-indigo-200
+                      ${isSelected
+                        ? "bg-indigo-600 text-white scale-105"
+                        : isDisabled
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-white hover:bg-indigo-100"
+                      }
+                    `}
+                    onClick={() => !isDisabled && handlePrefSelect(q.type, opt, q.multi, q.max)}
+                    disabled={isDisabled}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-          <div className="flex gap-4 mt-4">
-            <button
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg"
-              onClick={nextPref}
-              disabled={loading}
-            >
-              Dalej
-            </button>
-            <button className="text-gray-500 hover:text-indigo-700" onClick={handleSkip} disabled={loading}>
-              Pomiń, zrobię później
-            </button>
+            {q.multi && (
+              <div className="text-sm text-gray-500 text-center">
+                Możesz wybrać maksymalnie {q.max} opcji ({selected.length}/{q.max})
+              </div>
+            )}
+            {error && <div className="text-red-600 text-lg text-center">{error}</div>}
+            <div className="flex gap-6 mt-8">
+              <button
+                className="bg-indigo-700 hover:bg-indigo-800 text-white px-8 py-3 rounded-2xl text-xl font-bold shadow transition"
+                onClick={nextPref}
+                disabled={loading}
+              >
+                Dalej
+              </button>
+              <button
+                className="bg-white border-2 border-indigo-300 text-indigo-700 px-8 py-3 rounded-2xl text-xl font-semibold shadow hover:bg-indigo-50 transition"
+                onClick={handleSkip}
+                disabled={loading}
+              >
+                Pomiń, zrobię później
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Render MBTI
+  // MBTI
   const mbtiStep = step - preferenceQuestions.length;
   if (mbtiStep < mbtiQuestions.length) {
     const q = mbtiQuestions[mbtiStep];
     return (
-      <div className="min-h-screen flex items-center justify-center bg-indigo-50">
-        <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl flex flex-col gap-6">
-          <h2 className="text-2xl font-bold text-indigo-700 text-center">Test osobowości</h2>
-          <div>
-            <div className="font-semibold mb-2">{q.question}</div>
-            <div className="flex flex-col gap-2">
+      <div className={`min-h-screen w-full flex flex-col items-center justify-center ${gradientBg} transition-all duration-700`}>
+        <div className="absolute top-0 left-0 w-full h-2 bg-indigo-200">
+          <div className="h-2 bg-amber-400 transition-all duration-500" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="flex-1 flex flex-col justify-center items-center w-full">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-indigo-800 text-center drop-shadow mb-12 animate-fade-in">
+            Test osobowości
+          </h2>
+          <div className="w-full max-w-2xl flex flex-col items-center gap-8 animate-slide-up">
+            <div className="text-2xl md:text-3xl font-bold text-indigo-700 text-center">{q.question}</div>
+            <div className="flex flex-wrap justify-center gap-4 w-full">
               {[1,2,3,4,5].map(val => (
                 <button
                   key={val}
-                  className={`px-4 py-2 rounded-lg border transition ${
-                    mbtiAnswers[mbtiStep] === val
-                      ? "bg-indigo-600 text-white"
-                      : "bg-indigo-50"
-                  }`}
+                  className={`
+                    px-8 py-4 rounded-2xl shadow-lg text-lg font-semibold transition
+                    border-2 border-amber-200
+                    ${mbtiAnswers[mbtiStep] === val
+                      ? "bg-amber-400 text-indigo-900 scale-105"
+                      : "bg-white hover:bg-amber-100"
+                    }
+                  `}
                   onClick={() => handleMbtiSelect(mbtiStep, val)}
                 >
                   {val === 1 ? "Zdecydowanie NIE" : val === 5 ? "Zdecydowanie TAK" : val}
                 </button>
               ))}
             </div>
-          </div>
-          {error && <div className="text-red-600 text-sm">{error}</div>}
-          <div className="flex gap-4 mt-4">
-            <button
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg"
-              onClick={mbtiStep === mbtiQuestions.length - 1 ? submitAll : nextMbti}
-              disabled={loading}
-            >
-              {mbtiStep === mbtiQuestions.length - 1 ? "Wyślij" : "Dalej"}
-            </button>
-            <button className="text-gray-500 hover:text-indigo-700" onClick={handleSkip} disabled={loading}>
-              Pomiń, zrobię później
-            </button>
+            {error && <div className="text-red-600 text-lg text-center">{error}</div>}
+            <div className="flex gap-6 mt-8">
+              <button
+                className="bg-amber-400 hover:bg-amber-500 text-indigo-900 px-8 py-3 rounded-2xl text-xl font-bold shadow transition"
+                onClick={mbtiStep === mbtiQuestions.length - 1 ? submitAll : nextMbti}
+                disabled={loading}
+              >
+                {mbtiStep === mbtiQuestions.length - 1 ? "Wyślij" : "Dalej"}
+              </button>
+              <button
+                className="bg-white border-2 border-amber-300 text-indigo-700 px-8 py-3 rounded-2xl text-xl font-semibold shadow hover:bg-amber-50 transition"
+                onClick={handleSkip}
+                disabled={loading}
+              >
+                Pomiń, zrobię później
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Po quizie (możesz dodać spinner lub przekierować do home)
   return null;
 }

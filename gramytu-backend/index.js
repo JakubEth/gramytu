@@ -456,19 +456,38 @@ app.get('/giphy/search', async (req, res) => {
   }
 });
 
-app.patch('/users/:id/preferences', async (req, res) => {
+app.patch('/users/:id/preferences', auth, async (req, res) => {
   try {
-    const { isAdult, favoriteEventType, preferredEventSize, preferredCategories, preferredTags, preferredMode, mbtiType } = req.body;
+    // Tylko właściciel może edytować swoje preferencje
+    if (req.user._id.toString() !== req.params.id) {
+      return res.status(403).json({ error: "Brak uprawnień" });
+    }
+
+    // Przygotuj update tylko z dozwolonych pól
+    const update = {};
+    if (typeof req.body.isAdult === "boolean") update.isAdult = req.body.isAdult;
+    if (req.body.favoriteEventType) update.favoriteEventType = req.body.favoriteEventType;
+    if (req.body.preferredEventSize) update.preferredEventSize = req.body.preferredEventSize;
+    if (Array.isArray(req.body.preferredCategories)) update.preferredCategories = req.body.preferredCategories;
+    if (Array.isArray(req.body.preferredTags)) update.preferredTags = req.body.preferredTags;
+    if (req.body.preferredMode) update.preferredMode = req.body.preferredMode;
+    if (req.body.mbtiType) update.mbtiType = req.body.mbtiType;
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { isAdult, favoriteEventType, preferredEventSize, preferredCategories, preferredTags, preferredMode, mbtiType },
+      update,
       { new: true }
     );
+
+    if (!user) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
+
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: "Błąd serwera" });
+    console.error("Błąd PATCH /users/:id/preferences:", err);
+    res.status(500).json({ error: "Błąd serwera", details: err.message });
   }
 });
+
 
 
 const PORT = process.env.PORT || 10000;

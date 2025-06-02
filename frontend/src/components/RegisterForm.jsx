@@ -71,6 +71,7 @@ export default function RegisterForm({ onSuccess, onClose }) {
       const data = await res.json();
       setLoading(false);
       if (res.ok && data && data.token && data.user) {
+        localStorage.setItem("token", data.token);
         // Zamknij modal rejestracji
         onClose && onClose();
         // Przekieruj na onboarding quiz, przekazując usera i token
