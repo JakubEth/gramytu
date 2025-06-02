@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const { Types } = mongoose;
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,20 +11,20 @@ const { Event, User, ChatMessage } = require('./models');
 const app = express();
 const server = http.createServer(app);
 
-// --- SOCKET.IO SETUP ---
 const { Server } = require('socket.io');
 const io = new Server(server, { 
-  cors: { 
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
-  transports: ['websocket', 'polling'] // Wymuś polling jeśli websocket nie działa
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  transports: ['websocket', 'polling']
 });
-
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- ENDPOINT GŁÓWNY DLA HEALTH CHECK ---
+app.get('/', (req, res) => {
+  res.sendStatus(200);
+});
 
 // --- MIDDLEWARE AUTORYZACJI ---
 const auth = async (req, res, next) => {
@@ -262,22 +263,17 @@ app.get('/events/:id/participants', async (req, res) => {
   }
 });
 
-// --- TRWAŁY CZAT GRUPOWY ---
-// Pobierz historię czatu dla eventu
+// --- CZAT GRUPOWY: HISTORIA WIADOMOŚCI ---
 app.get('/events/:id/chat', async (req, res) => {
   try {
-    const { Types } = require('mongoose');
     const eventId = req.params.id;
-
     if (!Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ error: "Nieprawidłowy format eventId" });
     }
-
-    const eventObjectId = new Types.ObjectId(eventId); // Dodaj "new"!
+    const eventObjectId = new Types.ObjectId(eventId);
     const messages = await ChatMessage.find({ eventId: eventObjectId })
       .sort({ createdAt: 1 })
       .select('username text createdAt userId');
-
     res.json(messages);
   } catch (error) {
     console.error("Błąd w /events/:id/chat:", error);
@@ -285,7 +281,24 @@ app.get('/events/:id/chat', async (req, res) => {
   }
 });
 
-
+// --- CZAT GRUPOWY: USUWANIE WIADOMOŚCI ---
+app.delete('/events/:eventId/chat/:msgId', async (req, res) => {
+  try {
+    const { eventId, msgId } = req.params;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "Brak tokenu" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const msg = await ChatMessage.findById(msgId);
+    if (!msg) return res.status(404).json({ error: "Nie znaleziono wiadomości" });
+    if (msg.userId.toString() !== decoded.userId) {
+      return res.status(403).json({ error: "Brak uprawnień" });
+    }
+    await ChatMessage.findByIdAndDelete(msgId);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
 
 // --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---
 io.on('connection', (socket) => {
@@ -310,6 +323,7 @@ io.on('connection', (socket) => {
       text,
     });
     io.to(eventId).emit('eventMessage', {
+      _id: msg._id,
       username: msg.username,
       userId: msg.userId,
       text: msg.text,
@@ -318,36 +332,22 @@ io.on('connection', (socket) => {
     console.log("Socket.io: eventMessage sent and saved", msg);
   });
 
+  socket.on('deleteMessage', (msgId) => {
+    if (socket.eventId) {
+      socket.to(socket.eventId).emit('deleteMessage', msgId);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log("Socket.io: user disconnected");
   });
 });
 
-app.delete('/events/:eventId/chat/:msgId', async (req, res) => {
-  try {
-    const { eventId, msgId } = req.params;
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: "Brak tokenu" });
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const msg = await ChatMessage.findById(msgId);
-    if (!msg) return res.status(404).json({ error: "Nie znaleziono wiadomości" });
-    if (msg.userId.toString() !== decoded.userId) {
-      return res.status(403).json({ error: "Brak uprawnień" });
-    }
-    await ChatMessage.findByIdAndDelete(msgId);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: "Błąd serwera" });
-  }
-});
-
-
-
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 10000;
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    server.listen(PORT, () => console.log(`API działa na porcie ${PORT}`));
+    server.listen(PORT, '0.0.0.0', () => console.log(`API działa na porcie ${PORT}`));
     console.log("Połączono z MongoDB");
   })
   .catch(err => {
