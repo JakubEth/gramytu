@@ -6,7 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 require('dotenv').config();
-const fetch = require("node-fetch");
+// Poprawny import node-fetch dla Node 18+ i starszych:
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const { Event, User, ChatMessage } = require('./models');
 const app = express();
