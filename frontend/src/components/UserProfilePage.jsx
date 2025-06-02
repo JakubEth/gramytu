@@ -11,7 +11,6 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
   const [form, setForm] = useState({
     username: user?.username || "",
     password: "",
-    avatar: user?.avatar || "",
   });
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || defaultAvatar(user?.username));
   const [loading, setLoading] = useState(false);
@@ -19,24 +18,41 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
 
   const fileInputRef = useRef();
 
-  // Obsługa zmiany zdjęcia lokalnie (base64)
+  // Upload avatara do backendu (Cloudinary)
+  const handleAvatarUpload = async (file) => {
+    setLoading(true);
+    setMsg("");
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const token = localStorage.getItem("token");
+    const res = await fetch(`https://gramytu.onrender.com/users/${user._id}/avatar`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (res.ok && data.avatar) {
+      setAvatarPreview(data.avatar);
+      setMsg("Zmieniono zdjęcie!");
+      onUpdate && onUpdate({ ...user, avatar: data.avatar });
+    } else {
+      setMsg(data.error || "Błąd uploadu");
+    }
+  };
+
+  // Obsługa wyboru pliku
   const handleAvatarChange = e => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      setAvatarPreview(ev.target.result);
-      setForm(f => ({ ...f, avatar: ev.target.result }));
-    };
-    reader.readAsDataURL(file);
+    handleAvatarUpload(file);
   };
 
-  // Obsługa zmiany nicku/hasła/avatara (tu tylko frontend, rozbuduj backend jeśli chcesz)
+  // Edycja nicku/hasła (bez avatara!)
   const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);
     setMsg("");
-    // Przykład PATCH na backend (musisz obsłużyć na backendzie /users/:id)
     try {
       const res = await fetch(`https://gramytu.onrender.com/users/${user._id}`, {
         method: "PATCH",
@@ -44,7 +60,6 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
         body: JSON.stringify({
           username: form.username,
           password: form.password || undefined,
-          avatar: form.avatar,
         }),
       });
       const data = await res.json();
@@ -52,7 +67,7 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
       if (res.ok) {
         setMsg("Zapisano zmiany!");
         setEdit(false);
-        onUpdate && onUpdate(data); // zaktualizuj usera globalnie
+        onUpdate && onUpdate({ ...user, ...data });
       } else {
         setMsg(data.error || "Błąd zapisu");
       }
@@ -73,7 +88,7 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
       </button>
       <div className="mb-4 relative">
         <img
-          src={avatarPreview}
+          src={avatarPreview || defaultAvatar(user?.username)}
           alt="Profil"
           className="w-24 h-24 rounded-full border-4 border-indigo-100 object-cover"
         />
@@ -90,8 +105,9 @@ export default function UserProfilePage({ user, onClose, onUpdate }) {
               type="button"
               onClick={() => fileInputRef.current.click()}
               className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-2 text-xs shadow"
+              disabled={loading}
             >
-              Zmień
+              {loading ? "..." : "Zmień"}
             </button>
           </>
         )}

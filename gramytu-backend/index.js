@@ -6,8 +6,28 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 require('dotenv').config();
-// Poprawny import node-fetch dla Node 18+ i starszych:
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
+// --- Cloudinary upload ---
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'avatars',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 256, height: 256, crop: "fill" }]
+  }
+});
+const upload = multer({ storage });
 
 const { Event, User, ChatMessage } = require('./models');
 const app = express();
@@ -140,6 +160,7 @@ app.get('/users/:id', async (req, res) => {
     res.json({
       _id: user._id,
       username: user.username,
+      email: user.email,
       avatar: user.avatar || null
     });
   } catch (error) {
@@ -147,6 +168,17 @@ app.get('/users/:id', async (req, res) => {
   }
 });
 
+// --- UPLOAD AVATARA DO CLOUDINARY ---
+app.post('/users/:id/avatar', auth, upload.single('avatar'), async (req, res) => {
+  if (req.user._id.toString() !== req.params.id) {
+    return res.status(403).json({ error: "Brak uprawnień" });
+  }
+  const avatarUrl = req.file.path; // Cloudinary URL
+  await User.findByIdAndUpdate(req.user._id, { avatar: avatarUrl });
+  res.json({ avatar: avatarUrl });
+});
+
+// --- REJESTRACJA UŻYTKOWNIKA (nick + email + hasło) ---
 app.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -181,27 +213,34 @@ app.post('/register', async (req, res) => {
   }
 });
 
-
+// --- LOGOWANIE (nick lub email + hasło) ---
 app.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { username, email, password } = req.body;
+    // Pozwól logować się przez nick lub email
+    const user = await User.findOne(
+      username
+        ? { username }
+        : email
+        ? { email }
+        : null
+    );
     if (!user) {
-      return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+      return res.status(401).json({ error: "Nieprawidłowy nick/e-mail lub hasło" });
     }
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.status(401).json({ error: "Nieprawidłowy nick lub hasło" });
+      return res.status(401).json({ error: "Nieprawidłowy nick/e-mail lub hasło" });
     }
     const token = jwt.sign(
-      { userId: user._id, username: user.username },
+      { userId: user._id, username: user.username, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
     res.json({
       ok: true,
       token,
-      user: { _id: user._id, username: user.username }
+      user: { _id: user._id, username: user.username, email: user.email, avatar: user.avatar }
     });
   } catch (error) {
     console.error("Błąd logowania:", error);
