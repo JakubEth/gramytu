@@ -15,19 +15,29 @@ const defaultAvatar = username =>
   encodeURIComponent(username || "U") +
   "&background=E0E7FF&color=3730A3&bold=true";
 
-// Funkcja sprawdzająca, czy wiadomość jest pierwsza w grupie (serii)
 function isFirstInGroup(messages, idx) {
   if (idx === 0) return true;
   const prev = messages[idx - 1];
   const curr = messages[idx];
-
   const sameUser =
     prev.userId === curr.userId ||
     (prev.userId?._id && prev.userId?._id === curr.userId?._id);
   const prevTime = new Date(prev.createdAt).getTime();
   const currTime = new Date(curr.createdAt).getTime();
-  const closeInTime = Math.abs(currTime - prevTime) < 2 * 60 * 1000; // 2 minuty
+  const closeInTime = Math.abs(currTime - prevTime) < 2 * 60 * 1000;
+  return !(sameUser && closeInTime);
+}
 
+function isLastInGroup(messages, idx) {
+  if (idx === messages.length - 1) return true;
+  const curr = messages[idx];
+  const next = messages[idx + 1];
+  const sameUser =
+    curr.userId === next.userId ||
+    (curr.userId?._id && curr.userId?._id === next.userId?._id);
+  const currTime = new Date(curr.createdAt).getTime();
+  const nextTime = new Date(next.createdAt).getTime();
+  const closeInTime = Math.abs(nextTime - currTime) < 2 * 60 * 1000;
   return !(sameUser && closeInTime);
 }
 
@@ -92,7 +102,6 @@ export default function GroupChat({ eventId, user }) {
     prevLastMsgId.current = lastMsg ? lastMsg._id : undefined;
   }, [messages, eventId]);
 
-  // Zamykaj menu po kliknięciu poza nim i zdejmuj podświetlenie
   useEffect(() => {
     if (!contextMenu.visible) return;
     const close = () => {
@@ -103,7 +112,6 @@ export default function GroupChat({ eventId, user }) {
     return () => window.removeEventListener("click", close);
   }, [contextMenu.visible]);
 
-  // GIPHY obsługa przez backend proxy
   const fetchGifs = async (query) => {
     if (!query) return setGifs([]);
     try {
@@ -111,14 +119,12 @@ export default function GroupChat({ eventId, user }) {
         `${API_URL}/giphy/search?q=${encodeURIComponent(query)}`
       );
       if (!res.ok) {
-        console.error("Giphy proxy API error:", res.status, await res.text());
         setGifs([]);
         return;
       }
       const data = await res.json();
       setGifs(data || []);
     } catch (e) {
-      console.error("Giphy fetch error:", e);
       setGifs([]);
     }
   };
@@ -157,7 +163,6 @@ export default function GroupChat({ eventId, user }) {
     return <div>{msg.text}</div>;
   }
 
-  // Dropdown menu actions
   function handleCopyText(msg) {
     navigator.clipboard.writeText(
       msg.text.startsWith("<GIF>") ? "" : msg.text
@@ -176,7 +181,6 @@ export default function GroupChat({ eventId, user }) {
     alert("Przypnij (do zaimplementowania)");
   }
 
-  // Modal usuwania
   function handleDelete(msg) {
     setDeleteModal({ open: true, msg });
   }
@@ -197,10 +201,13 @@ export default function GroupChat({ eventId, user }) {
 
   return (
     <div className="flex flex-col h-full relative">
-      <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div
-        className="overflow-y-auto flex-1 pr-1"
-        style={{ overflowAnchor: "none", paddingBottom: 64 }}
+        className="overflow-y-auto flex-1 pr-1 scrollbar-none"
+        style={{
+          overflowAnchor: "none",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none"
+        }}
       >
         {(!messages || messages.length === 0) ? (
           <div className="text-center text-gray-400 italic mt-10 select-none">
@@ -212,6 +219,7 @@ export default function GroupChat({ eventId, user }) {
             const avatarUrl = msg.avatar || defaultAvatar(msg.username);
             const msgId = msg._id || i;
             const firstInGroup = isFirstInGroup(messages, i);
+            const lastInGroup = isLastInGroup(messages, i);
 
             return (
               <div
@@ -230,16 +238,20 @@ export default function GroupChat({ eventId, user }) {
                   });
                 } : undefined}
               >
-                {/* Avatar i nick tylko przy pierwszej z serii i tylko dla innych */}
-                {!isMine && firstInGroup && (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="w-9 h-9 rounded-full object-cover bg-indigo-100 mr-2 flex-shrink-0"
-                  />
-                )}
+                {/* Stała kolumna na avatar po lewej */}
+                <div className="w-9 mr-2 flex-shrink-0 flex justify-center">
+                  {!isMine && lastInGroup ? (
+                    <img
+                      src={avatarUrl}
+                      alt="avatar"
+                      className="w-9 h-9 rounded-full object-cover bg-indigo-100"
+                    />
+                  ) : (
+                    <div className="w-9 h-9" />
+                  )}
+                </div>
                 <div className="flex flex-col max-w-[60%]">
-                  {/* Nazwa i czas nad dymkiem tylko przy pierwszej z serii */}
+                  {/* Nick i godzina tylko przy pierwszej z serii */}
                   {firstInGroup && (
                     <div className={`flex items-center gap-2 mb-1 ${isMine ? "justify-end" : ""}`}>
                       <span className="font-bold text-indigo-800 text-xs">{msg.username}</span>
@@ -256,7 +268,6 @@ export default function GroupChat({ eventId, user }) {
                     {renderMessage(msg)}
                   </div>
                 </div>
-                {/* NIE pokazuj swojego avatara po prawej */}
               </div>
             );
           })
@@ -322,8 +333,8 @@ export default function GroupChat({ eventId, user }) {
           </div>
         </div>
       )}
-      {/* Input na dole */}
-      <div className="absolute left-0 right-0 bottom-0 bg-white border-t flex gap-2 p-2 z-10">
+      {/* Input na dole – sticky! */}
+      <div className="bg-white border-t flex gap-2 p-2 z-10 sticky bottom-0 left-0 right-0">
         <button
           className="bg-indigo-100 text-indigo-700 px-2 rounded font-bold"
           onClick={() => setShowGiphy((v) => !v)}
