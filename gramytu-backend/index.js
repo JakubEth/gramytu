@@ -12,7 +12,14 @@ const server = http.createServer(app);
 
 // --- SOCKET.IO SETUP ---
 const { Server } = require('socket.io');
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { 
+  cors: { 
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket', 'polling'] // Wymuś polling jeśli websocket nie działa
+});
+
 
 app.use(cors());
 app.use(express.json());
@@ -266,7 +273,7 @@ app.get('/events/:id/chat', async (req, res) => {
       return res.status(400).json({ error: "Nieprawidłowy format eventId" });
     }
 
-    const eventObjectId = Types.ObjectId(eventId);
+    const eventObjectId = new Types.ObjectId(eventId); // Dodaj "new"!
     const messages = await ChatMessage.find({ eventId: eventObjectId })
       .sort({ createdAt: 1 })
       .select('username text createdAt userId');
@@ -277,6 +284,7 @@ app.get('/events/:id/chat', async (req, res) => {
     res.status(500).json({ error: "Wewnętrzny błąd serwera" });
   }
 });
+
 
 
 // --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---

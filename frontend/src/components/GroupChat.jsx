@@ -19,6 +19,7 @@ export default function GroupChat({ eventId, user }) {
   useEffect(() => {
     if (!eventId) {
       console.warn("Brak eventId, nie pobieram historii czatu");
+      setMessages([]); // Zabezpieczenie przed n.map is not a function
       return;
     }
     console.log("fetchHistory: eventId =", eventId);
@@ -29,10 +30,11 @@ export default function GroupChat({ eventId, user }) {
       })
       .then(data => {
         console.log("HISTORIA CZATU:", data);
-        setMessages(data || []);
+        setMessages(Array.isArray(data) ? data : []);
       })
       .catch(err => {
         console.error("Błąd pobierania historii czatu:", err);
+        setMessages([]); // Zabezpieczenie przed n.map is not a function
       });
   }, [eventId]);
 
@@ -42,7 +44,11 @@ export default function GroupChat({ eventId, user }) {
       console.warn("Brak eventId, nie łączę z socket.io");
       return;
     }
-    socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
+    socketRef.current = io(SOCKET_URL, { 
+      transports: ["websocket", "polling"], 
+      withCredentials: true, 
+      secure: true 
+    });
 
     socketRef.current.on("connect", () => {
       console.log("Socket.io connected:", socketRef.current.id);
@@ -92,10 +98,10 @@ export default function GroupChat({ eventId, user }) {
     <div className="flex flex-col h-96">
       <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
-        {messages.length === 0 && (
+        {(!messages || messages.length === 0) && (
           <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
         )}
-        {messages.map((msg, i) => (
+        {Array.isArray(messages) && messages.map((msg, i) => (
           <div key={msg._id || i} className="mb-1">
             <b>{msg.username}:</b> {msg.text}
           </div>
