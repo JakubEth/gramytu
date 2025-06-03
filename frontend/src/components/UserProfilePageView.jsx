@@ -64,11 +64,12 @@ export default function UserProfilePageView() {
   const myId = (localStorage.getItem("userId") || "").toString();
   const isOwnProfile = (user?._id || "").toString() === myId;
 
-  // Sprawdź czy obserwujesz (po każdej zmianie followers/following)
+  // Sprawdź czy obserwujesz (po każdej zmianie followers)
   useEffect(() => {
-    if (!user || !user.followers) return;
-    setIsFollowing(user.followers.some(f => f.toString() === myId));
+    if (!user || !Array.isArray(user.followers)) return;
+    setIsFollowing(user.followers.includes(myId));
   }, [user, myId]);
+  
 
   // Dodawanie opinii (wielokrotnie)
   const handleReviewSubmit = async e => {
@@ -85,7 +86,6 @@ export default function UserProfilePageView() {
       if (res.ok) {
         setReviewMsg("Opinia dodana!");
         setReviewForm({ rating: 0, comment: "" });
-        // odśwież recenzje
         fetch(`${API_URL}/users/${id}/reviews`)
           .then(res => res.json())
           .then(data => {
@@ -101,16 +101,24 @@ export default function UserProfilePageView() {
     }
   };
 
-  // OBSERWUJ/OD-OBSERWUJ
+  // OBSERWUJ/ODOBSERWUJ
   const handleFollow = async () => {
     setFollowLoading(true);
     const token = localStorage.getItem("token");
-    const endpoint = isFollowing ? "unfollow" : "follow";
-    await fetch(`${API_URL}/users/${id}/${endpoint}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    // Odśwież usera i followers
+    if (isFollowing) {
+      // Od-obserwuj (nie wysyłaj powiadomienia)
+      await fetch(`${API_URL}/users/${id}/unfollow`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } else {
+      // Obserwuj (wysyłane powiadomienie przez backend)
+      await fetch(`${API_URL}/users/${id}/follow`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+    // ZAWSZE pobierz usera jeszcze raz po kliknięciu
     fetch(`${API_URL}/users/${id}`)
       .then(res => res.json())
       .then(data => {
@@ -118,7 +126,6 @@ export default function UserProfilePageView() {
         setFollowers(data.followers || []);
         setFollowing(data.following || []);
       });
-    setIsFollowing(f => !f);
     setFollowLoading(false);
   };
 
@@ -184,22 +191,23 @@ export default function UserProfilePageView() {
                   disabled={followLoading}
                   style={{
                     marginLeft: 12,
-                    background: isFollowing ? "#e0e7ff" : "#4f46e5",
-                    color: isFollowing ? "#3730a3" : "#fff",
+                    background: isFollowing ? "#fff" : "#4f46e5",
+                    color: isFollowing ? "#4f46e5" : "#fff",
+                    border: isFollowing ? "2px solid #4f46e5" : "none",
                     fontWeight: 700,
-                    padding: "8px 20px",
-                    borderRadius: 16,
-                    border: "none",
-                    boxShadow: "0 2px 8px #0002",
-                    fontSize: 16,
+                    padding: "10px 28px",
+                    borderRadius: 24,
+                    fontSize: 18,
+                    boxShadow: "0 2px 8px #0001",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 8
+                    gap: 10,
+                    transition: "all .15s"
                   }}
                 >
                   {isFollowing ? <FaUserCheck /> : <FaUserPlus />}
-                  {isFollowing ? "Obserwujesz" : "Obserwuj"}
+                  {isFollowing ? "Odobserwuj" : "Obserwuj"}
                 </button>
               )}
             </div>
@@ -242,7 +250,6 @@ export default function UserProfilePageView() {
               ({reviewCount} opinii)
             </span>
           </div>
-          {/* FORMULARZ OPINII */}
           {!isOwnProfile && (
             <form onSubmit={handleReviewSubmit} style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontWeight: 600, color: "#3730a3" }}>Twoja ocena:</label>
@@ -335,9 +342,6 @@ export default function UserProfilePageView() {
             ))}
           </div>
         </section>
-        <div style={{ color: "#a1a1aa", fontSize: 12, textAlign: "center" }}>
-          &copy; {new Date().getFullYear()} GramyTu. Design na miarę startupu 2025 🚀
-        </div>
       </div>
     </div>
   );
