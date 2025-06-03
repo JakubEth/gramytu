@@ -64,12 +64,16 @@ export default function UserProfilePageView() {
   const myId = (localStorage.getItem("userId") || "").toString();
   const isOwnProfile = (user?._id || "").toString() === myId;
 
-  // Sprawdź czy obserwujesz (po każdej zmianie followers)
+  // Debugowanie stanu obserwowania
   useEffect(() => {
     if (!user || !Array.isArray(user.followers)) return;
-    setIsFollowing(user.followers.includes(myId));
+    const followersStr = user.followers.map(f => f.toString());
+    console.log("DEBUG myId:", myId, typeof myId);
+    console.log("DEBUG followers:", user.followers);
+    console.log("DEBUG followersStr:", followersStr);
+    console.log("DEBUG includes:", followersStr.includes(myId.toString()));
+    setIsFollowing(followersStr.includes(myId.toString()));
   }, [user, myId]);
-  
 
   // Dodawanie opinii (wielokrotnie)
   const handleReviewSubmit = async e => {

@@ -693,6 +693,9 @@ app.post('/users/:id/follow', auth, async (req, res) => {
   const userToFollow = await User.findById(req.params.id);
   if (!userToFollow) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
 
+  // Sprawdź, czy już obserwujesz (czy jesteś w followers)
+  const alreadyFollowing = userToFollow.followers.map(f => f.toString()).includes(req.user._id.toString());
+
   // Dodaj do following i followers tylko jeśli jeszcze nie istnieje
   if (!req.user.following.includes(userToFollow._id)) {
     req.user.following.push(userToFollow._id);
@@ -703,17 +706,20 @@ app.post('/users/:id/follow', auth, async (req, res) => {
     await userToFollow.save();
   }
 
-  // Powiadomienie
-  const notif = await Notification.create({
-    user: userToFollow._id,
-    type: "follow",
-    text: `${req.user.username} zaczął Cię obserwować!`,
-    link: `/user/${req.user._id}`
-  });
-  io.to(userToFollow._id.toString()).emit("notification", notif);
+  // Powiadomienie TYLKO jeśli to pierwszy raz
+  if (!alreadyFollowing) {
+    const notif = await Notification.create({
+      user: userToFollow._id,
+      type: "follow",
+      text: `${req.user.username} zaczął Cię obserwować!`,
+      link: `/user/${req.user._id}`
+    });
+    io.to(userToFollow._id.toString()).emit("notification", notif);
+  }
 
   res.json({ ok: true });
 });
+
 
 // Przestań obserwować użytkownika
 app.post('/users/:id/unfollow', auth, async (req, res) => {

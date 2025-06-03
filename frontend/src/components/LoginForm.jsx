@@ -38,6 +38,9 @@ export default function LoginModal({ onSuccess, onClose }) {
       if (res.ok && data.ok && data.token && data.user) {
         if (form.remember) localStorage.setItem("rememberMe", "1");
         else localStorage.removeItem("rememberMe");
+        // KLUCZOWE: ustaw token i userId po zalogowaniu!
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data.user._id);
         onSuccess && onSuccess(data);
       } else {
         setError(data.error || "Błąd logowania");
