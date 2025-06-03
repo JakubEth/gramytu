@@ -271,7 +271,9 @@ app.get('/users/:id/activity', async (req, res) => {
 
 app.get('/users/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id)
+      .populate('followers', '_id')
+      .populate('following', '_id');
     if (!user) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
     res.json({
       _id: user._id,
@@ -286,12 +288,15 @@ app.get('/users/:id', async (req, res) => {
       preferredEventSize: user.preferredEventSize || null,
       preferredCategories: user.preferredCategories || [],
       preferredTags: user.preferredTags || [],
-      preferredMode: user.preferredMode || null
+      preferredMode: user.preferredMode || null,
+      followers: user.followers ? user.followers.map(f => f._id?.toString?.() || f.toString()) : [],
+      following: user.following ? user.following.map(f => f._id?.toString?.() || f.toString()) : []
     });
   } catch (error) {
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
+
 
 app.post('/users/:id/avatar', auth, upload.single('avatar'), async (req, res) => {
   if (req.user._id.toString() !== req.params.id) {
