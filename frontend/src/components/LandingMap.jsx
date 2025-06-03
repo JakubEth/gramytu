@@ -3,23 +3,52 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import iconBoardgame from "../assets/marker-boardgame.png";
-import iconComputer from "../assets/marker-computer.png";
-import iconPhysical from "../assets/marker-physical.png";
-import iconOther from "../assets/marker-other.png";
-import { FaHeart, FaRegHeart, FaSignInAlt, FaSignOutAlt, FaComments, FaTrash, FaCommentDots } from "react-icons/fa";
+import { FaHeart, FaSignInAlt, FaSignOutAlt, FaComments, FaTrash, FaUsers } from "react-icons/fa";
 import { io } from "socket.io-client";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const API_URL = "https://gramytu.onrender.com";
 const SOCKET_URL = API_URL;
 
+// Oryginalne ikony pinów
 const icons = {
-  planszowka: L.icon({ iconUrl: iconBoardgame, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
-  komputerowa: L.icon({ iconUrl: iconComputer, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
-  fizyczna: L.icon({ iconUrl: iconPhysical, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
-  inne: L.icon({ iconUrl: iconOther, iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  planszowka: L.icon({ iconUrl: "../marker-boardgame.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  komputerowa: L.icon({ iconUrl: "/marker-computer.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  fizyczna: L.icon({ iconUrl: "/marker-physical.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
+  inne: L.icon({ iconUrl: "/marker-other.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
+
+// DivIcon z subtelną kropką z avatarem NAD pinem (tylko dla własnych eventów)
+function getUserPinIconWithAvatarDot({ type, avatarUrl }) {
+  const baseIcon = icons[type] || icons.inne;
+
+  return L.divIcon({
+    className: "",
+    iconAnchor: baseIcon.options.iconAnchor,
+    popupAnchor: baseIcon.options.popupAnchor,
+    html: `
+      <div style="position: relative; display: inline-block;">
+        <div style="
+          position: absolute;
+          top: -16px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          border: 2px solid #fff;
+          box-shadow: 0 0 4px rgba(0,0,0,0.15);
+          background: #fff;
+          overflow: hidden;
+          z-index: 2;
+        ">
+          <img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; display: block;" />
+        </div>
+        <img src="${baseIcon.options.iconUrl}" style="width: 32px; height: 38px; display: block; position: relative; z-index: 1;" />
+      </div>
+    `,
+  });
+}
 
 function timeToEvent(eventDate) {
   if (!eventDate) return "";
@@ -33,16 +62,6 @@ function timeToEvent(eventDate) {
   if (diffDays > 0) return `za ${diffDays} dni${diffHours > 0 ? `, ${diffHours}h` : ""}`;
   if (diffHours > 0) return `za ${diffHours}h${diffMinutes > 0 ? `, ${diffMinutes}min` : ""}`;
   return `za ${diffMinutes}min`;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return (
-    d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) +
-    ", " +
-    d.toLocaleDateString("pl-PL")
-  );
 }
 
 function LikeButton({ eventId, user }) {
@@ -89,173 +108,6 @@ function LikeButton({ eventId, user }) {
   );
 }
 
-function GroupChat({ eventId, user }) {
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [menu, setMenu] = useState({ visible: false, x: 0, y: 0, msg: null });
-  const socketRef = useRef(null);
-  const messagesEndRef = useRef(null);
-
-  useEffect(() => {
-    if (!eventId) return;
-    fetch(`${API_URL}/events/${eventId}/chat`)
-      .then(res => res.json())
-      .then(data => setMessages(Array.isArray(data) ? data : []))
-      .catch(() => setMessages([]));
-  }, [eventId]);
-
-  useEffect(() => {
-    if (!eventId) return;
-    socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
-
-    socketRef.current.emit("joinEventChat", {
-      eventId,
-      token: localStorage.getItem("token"),
-    });
-
-    socketRef.current.on("eventMessage", (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
-
-    socketRef.current.on("deleteMessage", (msgId) => {
-      setMessages(prev => prev.filter(m => m._id !== msgId));
-    });
-
-    return () => {
-      socketRef.current.disconnect();
-    };
-  }, [eventId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    const close = () => setMenu(m => m.visible ? { ...m, visible: false } : m);
-    if (menu.visible) window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [menu.visible]);
-
-  const handleSend = () => {
-    if (!text.trim()) return;
-    socketRef.current.emit("eventMessage", {
-      eventId,
-      text,
-    });
-    setText("");
-  };
-
-  const handleContextMenu = (e, msg) => {
-    e.preventDefault();
-    setMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      msg,
-    });
-  };
-
-  const handleDelete = () => {
-    const msg = menu.msg;
-    fetch(`${API_URL}/events/${eventId}/chat/${msg._id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    }).then(res => {
-      if (res.ok) {
-        setMessages(prev => prev.filter(m => m._id !== msg._id));
-        socketRef.current.emit("deleteMessage", msg._id);
-        setMenu({ visible: false, x: 0, y: 0, msg: null });
-      }
-    });
-  };
-
-  return (
-    <div className="flex flex-col h-96 relative">
-      <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
-      <div className="flex-1 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
-        {(!messages || messages.length === 0) && (
-          <div className="text-gray-400 italic">Brak wiadomości w czacie.</div>
-        )}
-        {Array.isArray(messages) && messages.map((msg, i) => {
-          const isMine = user && (msg.userId === user._id || msg.userId?._id === user._id);
-          return (
-            <div
-              key={msg._id || i}
-              className={`flex mb-2 ${isMine ? "justify-end" : "justify-start"}`}
-              onContextMenu={isMine ? (e) => handleContextMenu(e, msg) : undefined}
-              style={{ userSelect: "text" }}
-            >
-              <div className={`max-w-[70%] px-4 py-2 rounded-2xl shadow relative group
-                ${isMine
-                  ? "bg-indigo-100 text-indigo-900 rounded-br-sm"
-                  : "bg-white text-gray-800 rounded-bl-sm border border-gray-200"}
-                `}
-                style={{ cursor: isMine ? "context-menu" : "default" }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-xs text-gray-600">{msg.username}</span>
-                  <span className="text-[10px] text-gray-400">{formatDate(msg.createdAt)}</span>
-                </div>
-                <div className="break-words whitespace-pre-wrap">{msg.text}</div>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="flex gap-2 mt-2">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          className="border rounded px-2 py-1 flex-1 text-sm"
-          placeholder="Napisz wiadomość..."
-          onKeyDown={e => e.key === "Enter" ? handleSend() : null}
-        />
-        <button
-          className="bg-indigo-600 text-white px-3 rounded"
-          onClick={handleSend}
-        >
-          Wyślij
-        </button>
-      </div>
-      {menu.visible && (
-        <div
-          className="fixed z-50 bg-white border rounded shadow-lg py-1 px-2 text-sm"
-          style={{
-            top: menu.y,
-            left: menu.x,
-            minWidth: 120,
-          }}
-        >
-          <button
-            className="w-full text-left px-2 py-1 hover:bg-red-50 hover:text-red-600 rounded"
-            onClick={handleDelete}
-          >
-            Usuń wiadomość
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
-          aria-label="Zamknij"
-        >
-          ×
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function ParticipantsList({ eventId }) {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,103 +125,34 @@ function ParticipantsList({ eventId }) {
 
   return (
     <div>
-      <div className="font-semibold text-lg mb-3">Uczestnicy wydarzenia</div>
+      <div className="flex items-center gap-2 font-semibold text-lg mb-3">
+        <FaUsers className="text-indigo-600" /> Lista uczestników
+      </div>
       {participants.length === 0 && <div className="text-gray-500">Brak zapisanych osób.</div>}
       <ul className="space-y-2">
         {participants.map(u => (
           <li key={u._id} className="flex items-center gap-2">
-            {u.avatar && (
-              <img src={u.avatar} alt={u.username} className="w-8 h-8 rounded-full object-cover" />
-            )}
-            <span className="font-medium">{u.username}</span>
+            <Link to={`/user/${u._id}`} className="flex items-center gap-2 hover:bg-indigo-50 px-2 py-1 rounded transition">
+              <img
+                src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.username)}&background=E0E7FF&color=3730A3&bold=true`}
+                alt={u.username}
+                className="w-8 h-8 rounded-full object-cover border border-indigo-100"
+              />
+              <span className="font-medium text-indigo-800">{u.username}</span>
+            </Link>
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function CommentsSection({ eventId, user }) {
-  const [comments, setComments] = useState([]);
-  const [text, setText] = useState("");
-
-  useEffect(() => {
-    fetch(`${API_URL}/events/${eventId}`)
-      .then(res => {
-        if (!res.ok) {
-          console.error("Błąd pobierania eventu (GET /events/:id):", res.status);
-          return { comments: [] };
-        }
-        return res.json();
-      })
-      .then(ev => setComments(ev.comments || []))
-      .catch(err => {
-        console.error("Błąd fetch comments:", err);
-        setComments([]);
-      });
-  }, [eventId]);
-
-  const handleAddComment = async () => {
-    if (!user || !text.trim()) return;
-    try {
-      await fetch(`${API_URL}/events/${eventId}/comment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ text })
-      });
-      const res = await fetch(`${API_URL}/events/${eventId}`);
-      if (!res.ok) {
-        setComments([]);
-        return;
-      }
-      const ev = await res.json();
-      setComments(ev.comments || []);
-      setText("");
-    } catch (err) {
-      console.error("Błąd handleAddComment:", err);
-    }
-  };
-
-  return (
-    <div>
-      <div className="font-semibold text-xs text-indigo-700 mb-3">Komentarze:</div>
-      <ul className="mb-2 max-h-56 overflow-y-auto text-xs">
-        {comments.map((c, i) => (
-          <li key={i} className="mb-2 border-b pb-1">
-            <b>{c.username}:</b> {c.text}
-          </li>
-        ))}
-      </ul>
-      {user && (
-        <div className="flex gap-1 mt-2">
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Dodaj komentarz..."
-            className="border rounded px-2 py-1 flex-1 text-xs"
-          />
-          <button
-            onClick={handleAddComment}
-            className="bg-indigo-600 text-white px-2 rounded text-xs"
-          >
-            Dodaj
-          </button>
-        </div>
-      )}
     </div>
   );
 }
 
 export default function LandingMap({ events, user, setEvents }) {
-  const [commentsModalEvent, setCommentsModalEvent] = useState(null);
   const [participantsModalEvent, setParticipantsModalEvent] = useState(null);
-  const [chatModalEvent, setChatModalEvent] = useState(null);
   const [flash, setFlash] = useState("");
   const [participantsMap, setParticipantsMap] = useState({});
   const socketRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, { transports: ["websocket", "polling"] });
@@ -438,6 +221,20 @@ export default function LandingMap({ events, user, setEvents }) {
             const participants = participantsMap[ev._id] || ev.participants || [];
             const isOrganizer = user && ev.hostId === user._id;
             const isUserParticipant = user && participants.some(p => p._id === user._id || p === user._id);
+
+            const avatarUrl =
+              user && ev.hostId === user._id
+                ? (user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=E0E7FF&color=3730A3&bold=true`)
+                : "";
+
+            const markerIcon =
+              user && ev.hostId === user._id
+                ? getUserPinIconWithAvatarDot({
+                    type: ev.type,
+                    avatarUrl
+                  })
+                : icons[ev.type] || icons.inne;
+
             return (
               <Marker
                 key={ev._id || ev.id}
@@ -445,10 +242,10 @@ export default function LandingMap({ events, user, setEvents }) {
                   ev.location ? ev.location.lat : ev.lat,
                   ev.location ? ev.location.lng : ev.lng
                 ]}
-                icon={icons[ev.type] || icons.inne}
+                icon={markerIcon}
               >
                 <Popup>
-                  <div className="flex flex-row gap-3 min-w-[320px] max-w-[400px] items-start">
+                  <div className="flex flex-row gap-3 min-w-[340px] max-w-[440px] items-start">
                     {ev.image && (
                       <img
                         src={ev.image}
@@ -458,7 +255,7 @@ export default function LandingMap({ events, user, setEvents }) {
                       />
                     )}
                     <div className="flex-1 flex flex-col">
-                      <div className="font-bold text-indigo-700 text-base mb-1">{ev.title}</div>
+                      <div className="font-bold text-indigo-700 text-lg mb-1">{ev.title}</div>
                       <div className="text-xs text-gray-500 mb-2">
                         {timeToEvent(ev.date)} • {ev.location?.name}
                       </div>
@@ -473,13 +270,18 @@ export default function LandingMap({ events, user, setEvents }) {
                           )}
                         </div>
                       )}
-                      <div className="text-xs text-gray-400 mt-2">
-                        Organizator:{" "}
+                      <div className="flex items-center gap-2 text-xs text-gray-400 mt-2 mb-1">
+                        <span>Organizator:</span>
                         <Link
                           to={`/user/${ev.hostId}`}
-                          className="text-indigo-600 underline hover:text-indigo-800"
+                          className="flex items-center gap-1 hover:bg-indigo-50 px-2 py-1 rounded transition"
                         >
-                          {ev.host}
+                          <img
+                            src={ev.hostAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(ev.host)}&background=E0E7FF&color=3730A3&bold=true`}
+                            alt={ev.host}
+                            className="w-7 h-7 rounded-full object-cover border border-indigo-100"
+                          />
+                          <span className="font-semibold text-indigo-800">{ev.host}</span>
                         </Link>
                       </div>
                       {ev.paid && (
@@ -488,21 +290,21 @@ export default function LandingMap({ events, user, setEvents }) {
                         </div>
                       )}
                       <button
-                        className="text-xs text-indigo-700 underline mb-2 text-left"
+                        className="flex items-center gap-2 text-xs text-indigo-700 underline mb-2 text-left hover:text-indigo-900 transition"
                         style={{ cursor: "pointer" }}
                         onClick={() => setParticipantsModalEvent(ev._id)}
                       >
-                        Zapisani: {participants.length}/{ev.maxParticipants}
+                        <FaUsers className="text-indigo-500" /> Lista uczestników: {participants.length}/{ev.maxParticipants}
                       </button>
                       <div className="flex items-center gap-3 mt-3">
                         <LikeButton eventId={ev._id} user={user} />
                         <button
-                          onClick={() => setCommentsModalEvent(ev._id)}
-                          className="flex flex-col items-center text-indigo-500 hover:text-indigo-800 relative"
-                          title="Komentarze"
+                          onClick={() => navigate("/my-events")}
+                          className="flex flex-col items-center text-indigo-700 hover:text-indigo-900 transition"
+                          title="Czat grupowy"
                         >
-                          <FaCommentDots size={22} />
-                          <span className="text-xs font-bold">{Array.isArray(ev.comments) ? ev.comments.length : 0}</span>
+                          <FaComments size={22} />
+                          <span className="text-xs">Czat</span>
                         </button>
                         {!isOrganizer && (participants.length < ev.maxParticipants) && !isUserParticipant && (
                           <button
@@ -528,16 +330,6 @@ export default function LandingMap({ events, user, setEvents }) {
                           >
                             <FaSignOutAlt size={22} />
                             <span className="text-xs">Opuść</span>
-                          </button>
-                        )}
-                        {isUserParticipant && (
-                          <button
-                            className="flex flex-col items-center text-indigo-700 hover:text-indigo-900"
-                            onClick={() => setChatModalEvent(ev._id)}
-                            title="Czat grupowy"
-                          >
-                            <FaComments size={22} />
-                            <span className="text-xs">Czat</span>
                           </button>
                         )}
                         {user && ev.hostId === user._id && (
@@ -574,20 +366,19 @@ export default function LandingMap({ events, user, setEvents }) {
           })}
         </MarkerClusterGroup>
       </MapContainer>
-      {commentsModalEvent && (
-        <Modal onClose={() => setCommentsModalEvent(null)}>
-          <CommentsSection eventId={commentsModalEvent} user={user} />
-        </Modal>
-      )}
       {participantsModalEvent && (
-        <Modal onClose={() => setParticipantsModalEvent(null)}>
-          <ParticipantsList eventId={participantsModalEvent} />
-        </Modal>
-      )}
-      {chatModalEvent && (
-        <Modal onClose={() => setChatModalEvent(null)}>
-          <GroupChat eventId={chatModalEvent} user={user} />
-        </Modal>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md relative">
+            <button
+              onClick={() => setParticipantsModalEvent(null)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl"
+              aria-label="Zamknij"
+            >
+              ×
+            </button>
+            <ParticipantsList eventId={participantsModalEvent} />
+          </div>
+        </div>
       )}
     </div>
   );

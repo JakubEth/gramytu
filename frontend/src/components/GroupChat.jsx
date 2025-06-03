@@ -228,7 +228,6 @@ export default function GroupChat({ eventId, user, eventName = "Wydarzenie", par
 
   return (
     <div className="flex flex-col h-full relative">
-      <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div
         className="overflow-y-auto flex-1 pr-1 scrollbar-none"
         style={{

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
@@ -36,7 +36,6 @@ function LocationSelector({ position, setPosition }) {
 const SUGGESTED_TAGS = [
   "turniej", "spotkanie", "familijne", "strategiczne", "karcianki", "RPG", "nowość", "klasyk"
 ];
-
 const MAX_TAGS = 6;
 
 export default function EventForm({ onAdd, user }) {
@@ -52,26 +51,10 @@ export default function EventForm({ onAdd, user }) {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const containerRef = useRef(null);
-  const [mapSize, setMapSize] = useState(420);
 
-  // NOWE STANY:
   const [maxParticipants, setMaxParticipants] = useState(10);
   const [paid, setPaid] = useState(false);
   const [price, setPrice] = useState(0);
-
-  useEffect(() => {
-    function resize() {
-      if (containerRef.current) {
-        const height = containerRef.current.offsetHeight;
-        setMapSize(Math.max(Math.min(height, 520), 340));
-      }
-    }
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, []);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -103,20 +86,12 @@ export default function EventForm({ onAdd, user }) {
       const reader = new FileReader();
       reader.onload = ev => {
         setImage(ev.target.result);
-        setImagePreview(ev.target.result);
       };
       reader.readAsDataURL(file);
     } else {
       setImage(null);
-      setImagePreview(null);
     }
   };
-
-  useEffect(() => {
-    if (!image && form.type) {
-      setImagePreview(DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne);
-    }
-  }, [form.type, image]);
 
   const isFormValid =
     form.title.trim() &&
@@ -168,7 +143,6 @@ export default function EventForm({ onAdd, user }) {
     setTags([]);
     setTagInput("");
     setImage(null);
-    setImagePreview(null);
     setPosition([52.2297, 21.0122]);
     setMaxParticipants(10);
     setPaid(false);
@@ -177,227 +151,206 @@ export default function EventForm({ onAdd, user }) {
 
   return (
     <form
-      ref={containerRef}
       onSubmit={handleSubmit}
-      className="w-full max-w-[1000px] bg-white rounded-2xl shadow-2xl flex flex-col md:flex-row gap-10 p-6 md:p-10"
-      style={{ minHeight: 420, maxHeight: 700, overflowY: "auto" }}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        width: "100%",
+        height: 640,
+        maxWidth: 1000,
+        margin: "0 auto",
+        background: "none"
+      }}
     >
-      {/* LEWA KOLUMNA: INPUTY */}
-      <div className="flex-1 flex flex-col gap-4 justify-between min-w-[320px] max-w-[500px]">
-        <div>
-          <h2 className="text-2xl font-bold text-indigo-700 mb-4">Dodaj wydarzenie</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-            <div>
-              <label className="block mb-1 text-sm font-semibold text-gray-700">Tytuł</label>
-              <input
-                name="title"
-                placeholder="Tytuł"
-                value={form.title}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-sm font-semibold text-gray-700">Opis</label>
-              <input
-                name="description"
-                placeholder="Opis"
-                value={form.description}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-            <div>
-              <label className="block mb-1 text-sm font-semibold text-gray-700">Miejsce</label>
-              <input
-                name="locationName"
-                placeholder="Np. Planszówkowo"
-                value={form.locationName}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-sm font-semibold text-gray-700">Organizator</label>
-              <div className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-indigo-700 font-semibold select-none cursor-not-allowed">
-                {user?.username || "Nieznany"}
-              </div>
-            </div>
-          </div>
-          <div className="mb-2">
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Typ wydarzenia</label>
-            <select
-              name="type"
-              value={form.type}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-            >
-              <option value="">Wybierz typ...</option>
-              <option value="planszowka">Planszówka</option>
-              <option value="komputerowa">Gra komputerowa</option>
-              <option value="fizyczna">Gra fizyczna</option>
-              <option value="inne">Coś innego</option>
-            </select>
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700"></label>
-            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={pl}>
-              <DatePicker
-                label="Data wydarzenia"
-                value={date}
-                onChange={setDate}
-                slotProps={{
-                  textField: {
-                    required: true,
-                    fullWidth: true,
-                    className: "w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-                  }
-                }}
-              />
-            </LocalizationProvider>
-          </div>
-          {/* NOWE POLE: liczba miejsc */}
-          <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Liczba miejsc</label>
+      {/* FORMULARZ */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        gap: 16,
+        padding: 0,
+        height: "100%"
+      }}>
+        <h2 className="text-2xl font-extrabold text-indigo-800 mb-2 text-left tracking-tight">Nowe wydarzenie</h2>
+        <input
+          name="title"
+          placeholder="Tytuł"
+          value={form.title}
+          onChange={handleChange}
+          required
+          className="px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50 font-semibold"
+        />
+        <textarea
+          name="description"
+          placeholder="Opis"
+          value={form.description}
+          onChange={handleChange}
+          required
+          rows={6}
+          className="px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50 resize-none"
+          style={{ minHeight: 120, maxHeight: 180 }}
+        />
+        <div className="flex gap-2">
+          <input
+            name="locationName"
+            placeholder="Miejsce (np. Planszówkowo)"
+            value={form.locationName}
+            onChange={handleChange}
+            required
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50"
+          />
+          <select
+            name="type"
+            value={form.type}
+            onChange={handleChange}
+            required
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50"
+          >
+            <option value="">Typ wydarzenia...</option>
+            <option value="planszowka">Planszówka</option>
+            <option value="komputerowa">Gra komputerowa</option>
+            <option value="fizyczna">Gra fizyczna</option>
+            <option value="inne">Coś innego</option>
+          </select>
+        </div>
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={pl}>
+          <DatePicker
+            label="Data wydarzenia"
+            value={date}
+            onChange={setDate}
+            slotProps={{
+              textField: {
+                required: true,
+                fullWidth: true,
+                className: "w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50"
+              }
+            }}
+          />
+        </LocalizationProvider>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={maxParticipants}
+            onChange={e => setMaxParticipants(Number(e.target.value))}
+            required
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50"
+            placeholder="Liczba miejsc"
+          />
+          <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+            <input
+              type="checkbox"
+              checked={paid}
+              onChange={e => setPaid(e.target.checked)}
+              className="accent-indigo-600"
+            />
+            Płatne
+          </label>
+          {paid && (
             <input
               type="number"
               min={1}
-              max={100}
-              value={maxParticipants}
-              onChange={e => setMaxParticipants(Number(e.target.value))}
+              step={1}
+              value={price}
+              onChange={e => setPrice(Number(e.target.value))}
               required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
+              className="w-24 px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 outline-none text-base bg-gray-50"
+              placeholder="Kwota PLN"
             />
-          </div>
-          {/* NOWE POLE: płatność */}
-          <div className="mb-2 flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="paid"
-              checked={paid}
-              onChange={e => setPaid(e.target.checked)}
-            />
-            <label htmlFor="paid" className="text-sm">Uczestnictwo płatne</label>
-          </div>
-          {paid && (
-            <div className="mb-2">
-              <label className="block mb-1 text-sm font-semibold text-gray-700">Kwota do zapłaty (PLN)</label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={price}
-                onChange={e => setPrice(Number(e.target.value))}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition text-base"
-              />
-            </div>
           )}
-          <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">
-              Tagi: <span className="text-gray-400 text-xs">(max {MAX_TAGS})</span>
-            </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {tags.map((tag, idx) => (
-                <span
-                  key={tag}
-                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    className="ml-1 text-indigo-700 hover:text-red-500"
-                    onClick={() => setTags(tags.filter((t, i) => i !== idx))}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <input
-                type="text"
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                placeholder={tags.length >= MAX_TAGS ? "Limit tagów" : "Dodaj tag i Enter"}
-                className="px-3 py-1 border rounded-full text-sm focus:border-indigo-500 outline-none"
-                style={{ minWidth: 80, maxWidth: 150 }}
-                disabled={tags.length >= MAX_TAGS}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {SUGGESTED_TAGS.map(tag => (
+        </div>
+        <div>
+          <div className="flex flex-wrap gap-2 mb-1">
+            {tags.map((tag, idx) => (
+              <span
+                key={tag}
+                className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-xs flex items-center gap-1 font-semibold"
+              >
+                {tag}
                 <button
                   type="button"
-                  key={tag}
-                  className={`px-3 py-1 rounded-full border text-sm ${
-                    tags.includes(tag)
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-gray-100 text-gray-600 border-gray-300"
-                  }`}
-                  onClick={() => handleAddSuggestedTag(tag)}
-                  disabled={tags.includes(tag) || tags.length >= MAX_TAGS}
-                  style={tags.length >= MAX_TAGS && !tags.includes(tag) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+                  className="ml-1 text-indigo-700 hover:text-red-500"
+                  onClick={() => setTags(tags.filter((t, i) => i !== idx))}
                 >
-                  {tag}
+                  ×
                 </button>
-              ))}
-            </div>
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1 text-sm font-semibold text-gray-700">Zdjęcie wydarzenia</label>
+              </span>
+            ))}
             <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              type="text"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              placeholder={tags.length >= MAX_TAGS ? "Limit tagów" : "Dodaj tag"}
+              className="px-2 py-1 border rounded-full text-xs focus:border-indigo-400 outline-none bg-white"
+              style={{ minWidth: 60, maxWidth: 120 }}
+              disabled={tags.length >= MAX_TAGS}
             />
-            <div className="mt-2">
-              <img
-                src={imagePreview || DEFAULT_IMAGES[form.type] || DEFAULT_IMAGES.inne}
-                alt="Podgląd zdjęcia"
-                className="rounded-lg shadow w-full max-w-xs object-cover"
-                style={{ maxHeight: 180 }}
-              />
-            </div>
-            <div className="text-xs text-gray-400 mt-1">
-              Jeśli nie dodasz własnego zdjęcia, zostanie wybrane domyślne dla kategorii.
-            </div>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {SUGGESTED_TAGS.map(tag => (
+              <button
+                type="button"
+                key={tag}
+                className={`px-2 py-0.5 rounded-full border text-xs transition-all duration-100 ${
+                  tags.includes(tag)
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-indigo-50"
+                }`}
+                onClick={() => handleAddSuggestedTag(tag)}
+                disabled={tags.includes(tag) || tags.length >= MAX_TAGS}
+                style={tags.length >= MAX_TAGS && !tags.includes(tag) ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              >
+                {tag}
+              </button>
+            ))}
           </div>
         </div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+        />
         <button
           type="submit"
-          className={`bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition mt-4 w-full ${!isFormValid ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+          className={`bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl transition mt-2 w-full shadow-md ${!isFormValid ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
           disabled={!isFormValid}
+          style={{ letterSpacing: ".02em", fontSize: 16 }}
         >
-          Dodaj
+          Dodaj wydarzenie
         </button>
       </div>
-      {/* PRAWA KOLUMNA: MAPA */}
-      <div className="flex-1 flex flex-col items-center justify-center min-w-[340px]">
-        <label className="block font-semibold mb-2 text-center">Wybierz lokalizację na mapie:</label>
+      {/* MAPA */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        height: "100%"
+      }}>
+        <label className="block font-semibold mb-2 text-xs text-center text-indigo-800">Lokalizacja</label>
         <div
           style={{
-            width: mapSize,
-            height: mapSize,
-            maxWidth: "100%",
-            borderRadius: "0.75rem",
+            width: "100%",
+            height: "calc(100% - 24px)",
+            borderRadius: "1rem",
             overflow: "hidden",
-            boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.07)"
+            boxShadow: "0 2px 12px 0 rgb(0 0 0 / 0.05)",
+            background: "#f1f5f9",
+            minHeight: 340
           }}
-          className="bg-gray-100"
         >
           <MapContainer
             center={position}
             zoom={13}
-            style={{ width: "100%", height: "100%", borderRadius: "0.75rem", zIndex: 30 }}
+            style={{ width: "100%", height: "100%", borderRadius: "1rem", zIndex: 30 }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
@@ -406,8 +359,10 @@ export default function EventForm({ onAdd, user }) {
             <LocationSelector position={position} setPosition={setPosition} />
           </MapContainer>
         </div>
-        <div className="text-sm text-gray-500 mt-2 text-center">
-          Wybrana lokalizacja: <b>{position[0].toFixed(5)}, {position[1].toFixed(5)}</b>
+        <div className="text-xs text-gray-500 mt-2 text-center">
+          <span className="bg-white/80 px-2 py-0.5 rounded-full shadow-sm border border-gray-200">
+            {position[0].toFixed(5)}, {position[1].toFixed(5)}
+          </span>
         </div>
       </div>
     </form>
