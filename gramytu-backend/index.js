@@ -680,6 +680,53 @@ app.patch('/users/:id/preferences', auth, async (req, res) => {
   }
 });
 
+// Obserwuj użytkownika
+app.post('/users/:id/follow', auth, async (req, res) => {
+  if (req.user._id.toString() === req.params.id) {
+    return res.status(400).json({ error: "Nie możesz obserwować samego siebie" });
+  }
+  const userToFollow = await User.findById(req.params.id);
+  if (!userToFollow) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
+
+  // Dodaj do following i followers tylko jeśli jeszcze nie istnieje
+  if (!req.user.following.includes(userToFollow._id)) {
+    req.user.following.push(userToFollow._id);
+    await req.user.save();
+  }
+  if (!userToFollow.followers.includes(req.user._id)) {
+    userToFollow.followers.push(req.user._id);
+    await userToFollow.save();
+  }
+
+  // Powiadomienie
+  const notif = await Notification.create({
+    user: userToFollow._id,
+    type: "follow",
+    text: `${req.user.username} zaczął Cię obserwować!`,
+    link: `/user/${req.user._id}`
+  });
+  io.to(userToFollow._id.toString()).emit("notification", notif);
+
+  res.json({ ok: true });
+});
+
+// Przestań obserwować użytkownika
+app.post('/users/:id/unfollow', auth, async (req, res) => {
+  if (req.user._id.toString() === req.params.id) {
+    return res.status(400).json({ error: "Nie możesz przestać obserwować samego siebie" });
+  }
+  const userToUnfollow = await User.findById(req.params.id);
+  if (!userToUnfollow) return res.status(404).json({ error: "Nie znaleziono użytkownika" });
+
+  req.user.following = req.user.following.filter(id => id.toString() !== userToUnfollow._id.toString());
+  await req.user.save();
+
+  userToUnfollow.followers = userToUnfollow.followers.filter(id => id.toString() !== req.user._id.toString());
+  await userToUnfollow.save();
+
+  res.json({ ok: true });
+});
+
 const PORT = process.env.PORT || 10000;
 
 mongoose.connect(process.env.MONGO_URI)

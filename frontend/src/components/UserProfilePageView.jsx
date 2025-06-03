@@ -1,6 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { FaInstagram, FaFacebook, FaDiscord, FaStar } from "react-icons/fa";
+import { FaInstagram, FaFacebook, FaDiscord, FaStar, FaUserPlus, FaUserCheck } from "react-icons/fa";
+
+const API_URL = "https://gramytu.onrender.com";
 
 const defaultAvatar = username =>
   "https://ui-avatars.com/api/?name=" +
@@ -29,37 +31,52 @@ export default function UserProfilePageView() {
   // Opinie - input i obsługa
   const [reviewForm, setReviewForm] = useState({ rating: 0, comment: "" });
   const [reviewMsg, setReviewMsg] = useState("");
-  const [myReview, setMyReview] = useState(null);
+
+  // Follow system
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`https://gramytu.onrender.com/users/${id}`)
+    fetch(`${API_URL}/users/${id}`)
       .then(res => res.json())
-      .then(setUser);
-    fetch(`https://gramytu.onrender.com/users/${id}/reviews`)
+      .then(data => {
+        setUser(data);
+        setFollowers(data.followers || []);
+        setFollowing(data.following || []);
+      });
+    fetch(`${API_URL}/users/${id}/reviews`)
       .then(res => res.json())
       .then(data => {
         setReviews(data.reviews || []);
         setAvgRating(data.avgRating);
         setReviewCount(data.count || 0);
-        const myId = (localStorage.getItem("userId") || "").toString();
-        setMyReview(
-          data.reviews?.find(r => (r.author?._id || "").toString() === myId)
-        );
       });
-    fetch(`https://gramytu.onrender.com/users/${id}/activity`)
+    fetch(`${API_URL}/users/${id}/activity`)
       .then(res => res.json())
       .then(setActivity)
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Dodawanie opinii
+  // Id zalogowanego użytkownika
+  const myId = (localStorage.getItem("userId") || "").toString();
+  const isOwnProfile = (user?._id || "").toString() === myId;
+
+  // Sprawdź czy obserwujesz (po każdej zmianie followers/following)
+  useEffect(() => {
+    if (!user || !user.followers) return;
+    setIsFollowing(user.followers.some(f => f.toString() === myId));
+  }, [user, myId]);
+
+  // Dodawanie opinii (wielokrotnie)
   const handleReviewSubmit = async e => {
     e.preventDefault();
     setReviewMsg("");
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`https://gramytu.onrender.com/users/${id}/reviews`, {
+      const res = await fetch(`${API_URL}/users/${id}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(reviewForm),
@@ -68,17 +85,13 @@ export default function UserProfilePageView() {
       if (res.ok) {
         setReviewMsg("Opinia dodana!");
         setReviewForm({ rating: 0, comment: "" });
-        // odśwież recenzje i myReview
-        fetch(`https://gramytu.onrender.com/users/${id}/reviews`)
+        // odśwież recenzje
+        fetch(`${API_URL}/users/${id}/reviews`)
           .then(res => res.json())
           .then(data => {
             setReviews(data.reviews || []);
             setAvgRating(data.avgRating);
             setReviewCount(data.count || 0);
-            const myId = (localStorage.getItem("userId") || "").toString();
-            setMyReview(
-              data.reviews?.find(r => (r.author?._id || "").toString() === myId)
-            );
           });
       } else {
         setReviewMsg(data.error || "Błąd dodawania opinii");
@@ -88,9 +101,26 @@ export default function UserProfilePageView() {
     }
   };
 
-  // Id zalogowanego użytkownika
-  const myId = (localStorage.getItem("userId") || "").toString();
-  const isOwnProfile = (user?._id || "").toString() === myId;
+  // OBSERWUJ/OD-OBSERWUJ
+  const handleFollow = async () => {
+    setFollowLoading(true);
+    const token = localStorage.getItem("token");
+    const endpoint = isFollowing ? "unfollow" : "follow";
+    await fetch(`${API_URL}/users/${id}/${endpoint}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Odśwież usera i followers
+    fetch(`${API_URL}/users/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setUser(data);
+        setFollowers(data.followers || []);
+        setFollowing(data.following || []);
+      });
+    setIsFollowing(f => !f);
+    setFollowLoading(false);
+  };
 
   if (loading) return <div className="p-8 text-center text-gray-500">Ładowanie profilu...</div>;
   if (!user) return <div className="p-8 text-center text-red-500">Nie znaleziono użytkownika.</div>;
@@ -141,6 +171,38 @@ export default function UserProfilePageView() {
                 borderRadius: 12
               }}>ID: {user._id}</span>
             </div>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 8 }}>
+              <span style={{ fontWeight: 600, color: "#3730a3" }}>
+                <b>{followers.length}</b> obserwujących
+              </span>
+              <span style={{ fontWeight: 600, color: "#3730a3" }}>
+                <b>{following.length}</b> obserwowanych
+              </span>
+              {!isOwnProfile && (
+                <button
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  style={{
+                    marginLeft: 12,
+                    background: isFollowing ? "#e0e7ff" : "#4f46e5",
+                    color: isFollowing ? "#3730a3" : "#fff",
+                    fontWeight: 700,
+                    padding: "8px 20px",
+                    borderRadius: 16,
+                    border: "none",
+                    boxShadow: "0 2px 8px #0002",
+                    fontSize: 16,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
+                  }}
+                >
+                  {isFollowing ? <FaUserCheck /> : <FaUserPlus />}
+                  {isFollowing ? "Obserwujesz" : "Obserwuj"}
+                </button>
+              )}
+            </div>
             <div style={{ marginTop: 8 }}>
               <span style={{ fontWeight: 700, color: "#3730a3" }}>Typ osobowości: </span>
               <span style={{ fontWeight: 500 }}>
@@ -181,7 +243,7 @@ export default function UserProfilePageView() {
             </span>
           </div>
           {/* FORMULARZ OPINII */}
-          {!isOwnProfile && !myReview ? (
+          {!isOwnProfile && (
             <form onSubmit={handleReviewSubmit} style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontWeight: 600, color: "#3730a3" }}>Twoja ocena:</label>
               <div style={{ display: "flex", gap: 4 }}>
@@ -233,15 +295,7 @@ export default function UserProfilePageView() {
               </button>
               <div style={{ color: "#16a34a", fontWeight: 600 }}>{reviewMsg}</div>
             </form>
-          ) : isOwnProfile ? (
-            <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>
-              Nie możesz ocenić samego siebie.
-            </div>
-          ) : myReview ? (
-            <div style={{ color: "#16a34a", fontWeight: 600, marginBottom: 8 }}>
-              Dziękujemy za Twoją opinię!
-            </div>
-          ) : null}
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {reviews.length === 0 && (
               <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>Brak opinii</div>

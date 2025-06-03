@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FaCamera, FaInstagram, FaFacebook, FaDiscord, FaStar } from "react-icons/fa";
 
-// Komponent do wyświetlania gwiazdek oceny
 function StarRating({ value = 0, max = 5 }) {
   return (
     <span style={{ display: "inline-flex", gap: 2 }}>
@@ -39,7 +38,10 @@ export default function UserProfilePage({ user, onUpdate }) {
   const [reviewMsg, setReviewMsg] = useState("");
   const [activity, setActivity] = useState([]);
 
-  // Pobieranie opinii i aktywności
+  // Liczniki followers/following
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+
   useEffect(() => {
     if (!user?._id) return;
     fetch(`https://gramytu.onrender.com/users/${user._id}/reviews`)
@@ -54,6 +56,12 @@ export default function UserProfilePage({ user, onUpdate }) {
     fetch(`https://gramytu.onrender.com/users/${user._id}/activity`)
       .then(res => res.json())
       .then(setActivity);
+    fetch(`https://gramytu.onrender.com/users/${user._id}`)
+      .then(res => res.json())
+      .then(data => {
+        setFollowers(data.followers || []);
+        setFollowing(data.following || []);
+      });
   }, [user?._id, success]);
 
   useEffect(() => {
@@ -152,7 +160,6 @@ export default function UserProfilePage({ user, onUpdate }) {
     }
   };
 
-  // Id zalogowanego użytkownika
   const myId = localStorage.getItem("userId");
   const isOwnProfile = user?._id === myId;
 
@@ -287,6 +294,14 @@ export default function UserProfilePage({ user, onUpdate }) {
                 borderRadius: 12
               }}>ID: {user?._id}</span>
             </div>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 8 }}>
+              <span style={{ fontWeight: 600, color: "#3730a3" }}>
+                <b>{followers.length}</b> obserwujących
+              </span>
+              <span style={{ fontWeight: 600, color: "#3730a3" }}>
+                <b>{following.length}</b> obserwowanych
+              </span>
+            </div>
             <p style={{ color: "#52525b", fontSize: 18 }}>
               Email: <span style={{ fontWeight: 500 }}>{user?.email || <span style={{ color: "#a1a1aa" }}>Nie podano</span>}</span>
             </p>
@@ -335,7 +350,6 @@ export default function UserProfilePage({ user, onUpdate }) {
             </div>
           </div>
         </div>
-
         {/* OPINIE I OCENY */}
         <section style={{ background: "#f1f5f9", borderRadius: 24, padding: 32, boxShadow: "0 2px 8px #0001" }}>
           <h2 style={{ fontWeight: 800, fontSize: 22, color: "#3730a3", marginBottom: 12 }}>Opinie i oceny</h2>
@@ -348,67 +362,6 @@ export default function UserProfilePage({ user, onUpdate }) {
               ({reviewCount} opinii)
             </span>
           </div>
-          {!isOwnProfile && !myReview ? (
-            <form onSubmit={handleReviewSubmit} style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontWeight: 600, color: "#3730a3" }}>Twoja ocena:</label>
-              <div style={{ display: "flex", gap: 4 }}>
-                {[1,2,3,4,5].map(i => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setReviewForm(f => ({ ...f, rating: i }))}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: reviewForm.rating >= i ? "#facc15" : "#e5e7eb"
-                    }}
-                  >
-                    <FaStar size={24} />
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={reviewForm.comment}
-                onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
-                placeholder="Napisz opinię..."
-                rows={2}
-                style={{
-                  borderRadius: 12,
-                  border: "1px solid #e0e7ff",
-                  padding: 8,
-                  fontSize: 16,
-                  resize: "vertical"
-                }}
-                required
-              />
-              <button
-                type="submit"
-                style={{
-                  background: "linear-gradient(to right, #4f46e5, #3730a3)",
-                  color: "#fff",
-                  fontWeight: 700,
-                  padding: "8px 24px",
-                  borderRadius: 12,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  marginTop: 4
-                }}
-                disabled={reviewForm.rating === 0 || !reviewForm.comment.trim()}
-              >
-                Dodaj opinię
-              </button>
-              <div style={{ color: "#16a34a", fontWeight: 600 }}>{reviewMsg}</div>
-            </form>
-          ) : isOwnProfile ? (
-            <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>
-              Nie możesz ocenić samego siebie.
-            </div>
-          ) : myReview ? (
-            <div style={{ color: "#16a34a", fontWeight: 600, marginBottom: 8 }}>
-              Dziękujemy za Twoją opinię!
-            </div>
-          ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {reviews.length === 0 && (
               <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>Brak opinii</div>
@@ -432,7 +385,6 @@ export default function UserProfilePage({ user, onUpdate }) {
             ))}
           </div>
         </section>
-
         {/* DZIENNIK AKTYWNOŚCI */}
         <section style={{ background: "#f1f5f9", borderRadius: 24, padding: 32, boxShadow: "0 2px 8px #0001" }}>
           <h2 style={{ fontWeight: 800, fontSize: 22, color: "#3730a3", marginBottom: 12 }}>Dziennik aktywności</h2>
@@ -449,7 +401,6 @@ export default function UserProfilePage({ user, onUpdate }) {
             ))}
           </div>
         </section>
-
         <div style={{ color: "#a1a1aa", fontSize: 12, textAlign: "center" }}>
           &copy; {new Date().getFullYear()} GramyTu. Design na miarę startupu 2025 🚀
         </div>
