@@ -463,6 +463,31 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log("Socket.io: user disconnected");
   });
+  socket.on('readMessages', async ({ eventId, userId, lastReadMessageId }) => {
+    try {
+      // Pobierz wszystkie wiadomości z eventu do momentu lastReadMessageId
+      const messagesToUpdate = await ChatMessage.find({
+        eventId,
+        _id: { $lte: lastReadMessageId }
+      });
+
+      // Zaktualizuj readBy dla każdej z tych wiadomości
+      for (const msg of messagesToUpdate) {
+        if (!msg.readBy.map(id => id.toString()).includes(userId)) {
+          msg.readBy.push(userId);
+          await msg.save();
+        }
+      }
+      const user = await User.findById(userId).select('username avatar');
+      // Emituj info do innych w pokoju, kto co przeczytał
+      io.to(eventId.toString()).emit('messagesRead', {
+        user: { _id: user._id, username: user.username, avatar: user.avatar },
+        lastReadMessageId
+      });
+    } catch (e) {
+      console.error("readMessages error", e);
+    }
+})
 });
 
 

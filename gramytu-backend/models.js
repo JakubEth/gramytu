@@ -68,8 +68,10 @@ const ChatMessageSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   username: String,
   text: String,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }]
 });
+
 
 module.exports = {
   User: mongoose.model('User', UserSchema),

@@ -4,6 +4,33 @@ import { io } from "socket.io-client";
 const SOCKET_URL = "https://gramytu.onrender.com";
 const API_URL = "https://gramytu.onrender.com";
 
+// Funkcja separatora dnia
+function formatDaySeparator(dateStr) {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const isToday =
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear();
+
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isToday) return "Dzisiaj";
+  if (isYesterday) return "Wczoraj";
+
+  return date.toLocaleDateString("pl-PL", {
+    day: "numeric",
+    month: "long",
+    year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+}
+
 function formatTime(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -41,7 +68,7 @@ function isLastInGroup(messages, idx) {
   return !(sameUser && closeInTime);
 }
 
-export default function GroupChat({ eventId, user }) {
+export default function GroupChat({ eventId, user, eventName = "Wydarzenie", participants = [] }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showGiphy, setShowGiphy] = useState(false);
@@ -201,6 +228,7 @@ export default function GroupChat({ eventId, user }) {
 
   return (
     <div className="flex flex-col h-full relative">
+      <div className="font-semibold mb-2">Czat grupowy wydarzenia</div>
       <div
         className="overflow-y-auto flex-1 pr-1 scrollbar-none"
         style={{
@@ -221,51 +249,68 @@ export default function GroupChat({ eventId, user }) {
             const firstInGroup = isFirstInGroup(messages, i);
             const lastInGroup = isLastInGroup(messages, i);
 
+            // Separator dnia
+            const prevMsg = messages[i - 1];
+            const isNewDay =
+              i === 0 ||
+              new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString();
+
             return (
-              <div
-                key={msgId}
-                className={`flex items-end mb-1 ${isMine ? "justify-end" : ""}
-                  ${selectedMsgId === msgId ? "bg-indigo-100/80 ring-2 ring-indigo-400/70 rounded-2xl transition-all duration-150" : ""}
-                `}
-                onContextMenu={isMine ? (e) => {
-                  e.preventDefault();
-                  setSelectedMsgId(msgId);
-                  setContextMenu({
-                    visible: true,
-                    x: e.clientX,
-                    y: e.clientY,
-                    msg
-                  });
-                } : undefined}
-              >
-                {/* Stała kolumna na avatar po lewej */}
-                <div className="w-9 mr-2 flex-shrink-0 flex justify-center">
-                  {!isMine && lastInGroup ? (
-                    <img
-                      src={avatarUrl}
-                      alt="avatar"
-                      className="w-9 h-9 rounded-full object-cover bg-indigo-100"
-                    />
-                  ) : (
-                    <div className="w-9 h-9" />
-                  )}
-                </div>
-                <div className="flex flex-col max-w-[60%]">
-                  {/* Nick i godzina tylko przy pierwszej z serii */}
-                  {firstInGroup && (
-                    <div className={`flex items-center gap-2 mb-1 ${isMine ? "justify-end" : ""}`}>
-                      <span className="font-bold text-indigo-800 text-xs">{msg.username}</span>
-                      <span className="text-xs text-gray-400">{formatTime(msg.createdAt)}</span>
+              <div key={msgId + "-wrapper"}>
+                {/* SEPARATOR DNIA */}
+                {isNewDay && (
+                  <div className="flex items-center my-6">
+                    <div className="flex-1 h-px bg-indigo-100" />
+                    <span className="mx-4 px-3 py-1 rounded-full bg-white border border-indigo-100 shadow text-xs font-semibold text-indigo-400 select-none">
+                      {formatDaySeparator(msg.createdAt)}
+                    </span>
+                    <div className="flex-1 h-px bg-indigo-100" />
+                  </div>
+                )}
+                <div
+                  className={`flex items-end mb-1 ${isMine ? "justify-end" : ""}
+                    ${selectedMsgId === msgId ? "bg-indigo-100/80 ring-2 ring-indigo-400/70 rounded-2xl transition-all duration-150" : ""}
+                  `}
+                  onContextMenu={isMine ? (e) => {
+                    e.preventDefault();
+                    setSelectedMsgId(msgId);
+                    setContextMenu({
+                      visible: true,
+                      x: e.clientX,
+                      y: e.clientY,
+                      msg
+                    });
+                  } : undefined}
+                >
+                  {/* Stała kolumna na avatar po lewej */}
+                  <div className="w-9 mr-2 flex-shrink-0 flex justify-center">
+                    {!isMine && lastInGroup ? (
+                      <img
+                        src={avatarUrl}
+                        alt="avatar"
+                        className="w-9 h-9 rounded-full object-cover bg-indigo-100"
+                      />
+                    ) : (
+                      <div className="w-9 h-9" />
+                    )}
+                  </div>
+                  <div className="flex flex-col max-w-[60%]">
+                    {/* Nick i godzina tylko przy pierwszej z serii */}
+                    {firstInGroup && (
+                      <div className={`flex items-center gap-2 mb-1 ${isMine ? "justify-end" : ""}`}>
+                        <span className="font-bold text-indigo-800 text-xs">{msg.username}</span>
+                        <span className="text-xs text-gray-400">{formatTime(msg.createdAt)}</span>
+                      </div>
+                    )}
+                    <div className={`rounded-2xl px-4 py-2 shadow
+                      ${isMine
+                        ? "bg-blue-100 text-right self-end"
+                        : "bg-indigo-100 text-left self-start"
+                      }
+                      break-words
+                    `}>
+                      {renderMessage(msg)}
                     </div>
-                  )}
-                  <div className={`rounded-2xl px-4 py-2 shadow
-                    ${isMine
-                      ? "bg-blue-100 text-right self-end"
-                      : "bg-indigo-100 text-left self-start"
-                    }
-                    break-words
-                  `}>
-                    {renderMessage(msg)}
                   </div>
                 </div>
               </div>
@@ -334,76 +379,71 @@ export default function GroupChat({ eventId, user }) {
         </div>
       )}
       {/* Input na dole – sticky! */}
-      <div className="sticky bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white/90 to-white/60 border-t border-indigo-100 px-4 py-3 flex items-end gap-2 shadow-[0_-2px_16px_0_rgba(99,102,241,0.06)] backdrop-blur-sm">
-  {/* GIF button */}
-  <button
-    className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
-    onClick={() => setShowGiphy((v) => !v)}
-    title="Wyślij GIF"
-    type="button"
-  >
-    <span className="text-lg font-bold">GIF</span>
-  </button>
-  {/* Input */}
-  <input
-    value={text}
-    onChange={e => setText(e.target.value)}
-    className="flex-1 rounded-xl border border-indigo-100 bg-white px-4 py-2 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition placeholder-gray-400"
-    placeholder="Napisz wiadomość…"
-    onKeyDown={e => e.key === "Enter" ? handleSend() : null}
-    autoComplete="off"
-    spellCheck={true}
-    maxLength={1000}
-  />
-  {/* Wyślij button */}
-  <button
-    className="flex items-center justify-center px-5 h-10 rounded-xl font-bold bg-gradient-to-br from-indigo-500 to-blue-400 text-white shadow hover:from-indigo-600 hover:to-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
-    onClick={handleSend}
-    disabled={!text.trim()}
-    type="button"
-  >
-    Wyślij
-  </button>
-</div>
-
-{/* Popup z wyszukiwarką GIFów */}
-{showGiphy && (
-  <div className="absolute left-0 right-0 bottom-14 bg-white border-t border-indigo-100 shadow-2xl rounded-b-2xl p-4 z-20">
-    <div className="flex gap-2 mb-2">
-      <input
-        value={gifSearch}
-        onChange={e => {
-          setGifSearch(e.target.value);
-          fetchGifs(e.target.value);
-        }}
-        className="border border-indigo-100 rounded-xl px-3 py-2 flex-1 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 transition placeholder-gray-400"
-        placeholder="Szukaj GIFa…"
-        autoFocus
-      />
-      <button
-        className="text-red-600 font-bold px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 transition"
-        onClick={() => setShowGiphy(false)}
-        type="button"
-      >
-        ✕
-      </button>
-    </div>
-    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-      {gifs.map(gif => (
-        <img
-          key={gif.id}
-          src={gif.images.fixed_height_small.url}
-          alt={gif.title}
-          className="w-24 h-24 object-cover rounded-xl cursor-pointer border border-indigo-100 hover:border-indigo-400 shadow transition"
-          onClick={() => handleSendGif(gif.images.fixed_height.url)}
+      <div className="sticky bottom-0 left-0 right-0 z-10 bg-white border-t border-indigo-100 px-4 py-3 flex items-center gap-2" style={{boxShadow: "0 0 24px 0 rgba(99,102,241,0.06)"}}>
+        <button
+          className="flex items-center justify-center w-12 h-10 rounded-full bg-indigo-50 text-indigo-500 font-bold text-base hover:bg-indigo-100 transition"
+          onClick={() => setShowGiphy((v) => !v)}
+          title="Wyślij GIF"
+          type="button"
+          tabIndex={-1}
+        >
+          GIF
+        </button>
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          className="flex-1 h-10 rounded-full border border-indigo-100 bg-white px-4 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition shadow-sm"
+          placeholder="Napisz wiadomość..."
+          onKeyDown={e => e.key === "Enter" ? handleSend() : null}
+          autoComplete="off"
+          spellCheck={true}
+          maxLength={1000}
         />
-      ))}
-      {gifs.length === 0 && <div className="text-gray-400">Brak wyników</div>}
-    </div>
-  </div>
-)}
-
-      
+        <button
+          className="h-10 px-6 rounded-full font-bold text-white bg-gradient-to-br from-indigo-400 to-indigo-500 shadow-sm hover:from-indigo-500 hover:to-indigo-600 transition"
+          onClick={handleSend}
+          disabled={!text.trim()}
+          type="button"
+        >
+          Wyślij
+        </button>
+      </div>
+      {/* Popup z wyszukiwarką GIFów */}
+      {showGiphy && (
+        <div className="absolute left-0 right-0 bottom-14 bg-white border-t border-indigo-100 shadow-2xl rounded-b-2xl p-4 z-20">
+          <div className="flex gap-2 mb-2">
+            <input
+              value={gifSearch}
+              onChange={e => {
+                setGifSearch(e.target.value);
+                fetchGifs(e.target.value);
+              }}
+              className="border border-indigo-100 rounded-full px-4 py-2 flex-1 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition placeholder-gray-400"
+              placeholder="Szukaj GIFa…"
+              autoFocus
+            />
+            <button
+              className="text-red-600 font-bold px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 transition"
+              onClick={() => setShowGiphy(false)}
+              type="button"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+            {gifs.map(gif => (
+              <img
+                key={gif.id}
+                src={gif.images.fixed_height_small.url}
+                alt={gif.title}
+                className="w-24 h-24 object-cover rounded-xl cursor-pointer border border-indigo-100 hover:border-indigo-400 shadow transition"
+                onClick={() => handleSendGif(gif.images.fixed_height.url)}
+              />
+            ))}
+            {gifs.length === 0 && <div className="text-gray-400">Brak wyników</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
