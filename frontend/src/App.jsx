@@ -11,6 +11,7 @@ import EventsTinder from "./components/EventsTinder";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MyEventsPanel from "./components/MyEventsPanel";
 import OnboardingQuiz from "./components/OnboardingQuiz";
+import UserProfilePageView from "./components/UserProfilePageView";
 import { jwtDecode } from "jwt-decode";
 
 // --- KOMPONENT LISTY EVENTÓW ---
@@ -288,6 +289,7 @@ export default function App() {
         <Route path="/onboarding" element={
           <OnboardingQuiz onUserUpdate={refreshUser} />
         } />
+        <Route path="/user/:id" element={<UserProfilePageView />} />
       </Routes>
 
       {!hideHeaderFooter && <Footer />}
