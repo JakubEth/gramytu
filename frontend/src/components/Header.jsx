@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/react.png";
+import NotificationsBell from "./NotificationsBell";
 
 // Funkcja generująca domyślny avatar na podstawie nicku
 const getDefaultAvatar = username =>
@@ -75,6 +76,9 @@ export default function Header({
         <a href="#about" className="hover:text-indigo-700 font-medium transition">
           O nas
         </a>
+        {user && user._id && (
+        <NotificationsBell user={user} />
+      )}
         {!user ? (
           <>
             <button

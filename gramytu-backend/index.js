@@ -29,6 +29,15 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 const { Event, User, ChatMessage, UserReview, UserActivity } = require('./models');
+const Notification = mongoose.model('Notification', new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, required: true },
+  text: String,
+  link: String,
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+}));
+
 const app = express();
 const server = http.createServer(app);
 
@@ -58,7 +67,45 @@ const auth = async (req, res, next) => {
   }
 };
 
-// --- ENDPOINTY EVENTÓW ---
+// --- ENDPOINTY NOTYFIKACJI ---
+
+app.get('/notifications', auth, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(30);
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+app.post('/notifications/mark-read', auth, async (req, res) => {
+  try {
+    const ids = req.body.ids || [];
+    await Notification.updateMany(
+      { user: req.user._id, _id: { $in: ids } },
+      { $set: { read: true } }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+app.post('/notifications', async (req, res) => {
+  try {
+    const { user, type, text, link } = req.body;
+    if (!user || !type) return res.status(400).json({ error: "Brak danych" });
+    const notif = await Notification.create({ user, type, text, link });
+    io.to(user.toString()).emit("notification", notif);
+    res.status(201).json(notif);
+  } catch (err) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+// --- ENDPOINTY EVENTÓW, USERÓW, CZATU, ETC. ---
 
 app.get('/events', async (req, res) => {
   const events = await Event.find();
@@ -158,7 +205,6 @@ app.post('/users/:id/reviews', auth, async (req, res) => {
     if (req.user._id.toString() === req.params.id) {
       return res.status(400).json({ error: "Nie możesz ocenić samego siebie" });
     }
-    // Sprawdź, czy już oceniałeś tego usera (opcjonalnie)
     const existing = await UserReview.findOne({ user: req.params.id, author: req.user._id });
     if (existing) {
       return res.status(400).json({ error: "Już dodałeś opinię o tym użytkowniku" });
@@ -171,7 +217,6 @@ app.post('/users/:id/reviews', auth, async (req, res) => {
     });
     await review.save();
 
-    // Dodaj wpis do dziennika aktywności ocenianego i autora
     await UserActivity.create([
       {
         user: req.params.id,
@@ -208,7 +253,6 @@ app.get('/users/:id/reviews', async (req, res) => {
   }
 });
 
-// --- DZIENNIK AKTYWNOŚCI UŻYTKOWNIKA ---
 app.get('/users/:id/activity', async (req, res) => {
   try {
     const activities = await UserActivity.find({ user: req.params.id })
@@ -287,7 +331,6 @@ app.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Błąd rejestracji:", error);
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
@@ -327,7 +370,6 @@ app.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Błąd logowania:", error);
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
@@ -359,7 +401,6 @@ app.patch('/users/:id', async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ _id: user._id, username: user.username, avatar: user.avatar, gender: user.gender });
   } catch (error) {
-    console.error("Błąd aktualizacji użytkownika:", error);
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
@@ -400,6 +441,17 @@ app.post('/events/:id/join', auth, async (req, res) => {
     date: new Date(),
     details: `Dołączył do wydarzenia: ${event.title}`
   });
+
+  // Powiadom organizatora
+  if (event.hostId.toString() !== req.user._id.toString()) {
+    const notif = await Notification.create({
+      user: event.hostId,
+      type: "event_join",
+      text: `${req.user.username} dołączył do Twojego wydarzenia "${event.title}"`,
+      link: `/event/${event._id}`
+    });
+    io.to(event.hostId.toString()).emit("notification", notif);
+  }
 
   res.json({ ok: true });
 });
@@ -464,7 +516,6 @@ app.get('/events/:id/chat', async (req, res) => {
     }));
     res.json(messagesWithAvatar);
   } catch (error) {
-    console.error("Błąd w /events/:id/chat:", error);
     res.status(500).json({ error: "Wewnętrzny błąd serwera" });
   }
 });
@@ -487,18 +538,24 @@ app.delete('/events/:eventId/chat/:msgId', async (req, res) => {
   }
 });
 
-// --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW ---
+// --- SOCKET.IO CZAT GRUPOWY DLA EVENTÓW + NOTYFIKACJE ---
 io.on('connection', (socket) => {
+  socket.on("auth", ({ token }) => {
+    try {
+      const user = jwt.verify(token, process.env.JWT_SECRET);
+      if (user && user.userId) {
+        socket.join(user.userId.toString());
+      }
+    } catch {}
+  });
+
   socket.on('joinEventChat', ({ eventId, token }) => {
     try {
       const user = jwt.verify(token, process.env.JWT_SECRET);
       socket.join(eventId);
       socket.user = user;
       socket.eventId = eventId;
-      console.log("Socket.io: user joined event chat", eventId, user.username);
-    } catch (e) {
-      console.error("Socket.io: joinEventChat error", e);
-    }
+    } catch (e) {}
   });
 
   socket.on('eventMessage', async ({ eventId, text }) => {
@@ -511,7 +568,7 @@ io.on('connection', (socket) => {
       userId: socket.user.userId,
       username: socket.user.username,
       text,
-      readBy: [socket.user.userId] // autor od razu ma przeczytane
+      readBy: [socket.user.userId]
     });
     io.to(eventId).emit('eventMessage', {
       _id: msg._id,
@@ -522,7 +579,6 @@ io.on('connection', (socket) => {
       avatar,
       readBy: msg.readBy
     });
-    console.log("Socket.io: eventMessage sent and saved", msg);
   });
 
   socket.on('deleteMessage', (msgId) => {
@@ -536,11 +592,6 @@ io.on('connection', (socket) => {
     io.emit("participantsUpdate", { eventId, participants: event.participants });
   });
 
-  socket.on('disconnect', () => {
-    console.log("Socket.io: user disconnected");
-  });
-
-  // READ RECEIPTS
   socket.on('readMessages', async ({ eventId, userId, lastReadMessageId }) => {
     try {
       const messagesToUpdate = await ChatMessage.find({
@@ -558,20 +609,32 @@ io.on('connection', (socket) => {
         user: { _id: user._id, username: user.username, avatar: user.avatar },
         lastReadMessageId
       });
-    } catch (e) {
-      console.error("readMessages error", e);
+    } catch (e) {}
+  });
+
+  // Przykład: Emitowanie powiadomienia przy dołączeniu do eventu
+  socket.on("eventJoined", async ({ eventId, userId }) => {
+    const event = await Event.findById(eventId);
+    if (!event) return;
+    if (event.hostId.toString() !== userId) {
+      const joiningUser = await User.findById(userId);
+      const notif = await Notification.create({
+        user: event.hostId,
+        type: "event_join",
+        text: `${joiningUser.username} dołączył do Twojego wydarzenia "${event.title}"`,
+        link: `/event/${eventId}`
+      });
+      io.to(event.hostId.toString()).emit("notification", notif);
     }
   });
-});
 
-// --- GIPHY PROXY ENDPOINT Z DEBUGIEM ---
-console.log("DEBUG: process.env.GIPHY_API_KEY =", process.env.GIPHY_API_KEY);
+  socket.on('disconnect', () => {});
+});
 
 app.get('/giphy/search', async (req, res) => {
   const q = req.query.q || "";
   if (!q) return res.json([]);
   if (!process.env.GIPHY_API_KEY) {
-    console.error("Brak klucza GIPHY_API_KEY w backendzie!");
     return res.status(500).json({ error: "Brak klucza GIPHY_API_KEY w backendzie!" });
   }
   const url = `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=12&rating=pg`;
@@ -579,12 +642,10 @@ app.get('/giphy/search', async (req, res) => {
     const r = await fetch(url);
     const data = await r.json();
     if (!data.data) {
-      console.error("Giphy response error:", data);
       return res.status(500).json({ error: "Giphy error", details: data });
     }
     res.json(data.data);
   } catch (e) {
-    console.error("Giphy proxy error:", e);
     res.status(500).json({ error: "Giphy error", details: e.message });
   }
 });
@@ -614,7 +675,6 @@ app.patch('/users/:id/preferences', auth, async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    console.error("Błąd PATCH /users/:id/preferences:", err);
     res.status(500).json({ error: "Błąd serwera", details: err.message });
   }
 });

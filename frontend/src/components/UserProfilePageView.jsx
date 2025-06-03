@@ -141,9 +141,6 @@ export default function UserProfilePageView() {
                 borderRadius: 12
               }}>ID: {user._id}</span>
             </div>
-            <p style={{ color: "#52525b", fontSize: 18 }}>
-              Email: <span style={{ fontWeight: 500 }}>{user.email || <span style={{ color: "#a1a1aa" }}>Nie podano</span>}</span>
-            </p>
             <div style={{ marginTop: 8 }}>
               <span style={{ fontWeight: 700, color: "#3730a3" }}>Typ osobowości: </span>
               <span style={{ fontWeight: 500 }}>

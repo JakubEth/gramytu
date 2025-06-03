@@ -110,6 +110,16 @@ const ChatMessageSchema = new mongoose.Schema({
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }]
 });
 
+const NotificationSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  type: { type: String, required: true }, // np. "comment", "event_join", "message"
+  text: String,
+  link: String, // np. "/event/123"
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+
 module.exports = {
   User: mongoose.model('User', UserSchema),
   Event: mongoose.model('Event', EventSchema),
