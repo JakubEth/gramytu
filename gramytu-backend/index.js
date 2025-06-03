@@ -232,6 +232,15 @@ app.post('/users/:id/reviews', auth, async (req, res) => {
       }
     ]);
 
+    // POWIADOMIENIE O OTRZYMANIU OPINII
+    const notif = await Notification.create({
+      user: req.params.id,
+      type: "review",
+      text: `Otrzymałeś nową opinię od użytkownika ${req.user.username}: "${req.body.comment}"`,
+      link: `/user/${req.user._id}`
+    });
+    io.to(req.params.id.toString()).emit("notification", notif);
+
     res.status(201).json(review);
   } catch (error) {
     res.status(500).json({ error: "Błąd serwera" });
@@ -432,7 +441,6 @@ app.post('/events/:id/join', auth, async (req, res) => {
   event.participants.push(req.user._id);
   await event.save();
 
-  // Logowanie aktywności
   await UserActivity.create({
     user: req.user._id,
     type: "joined_event",
@@ -442,7 +450,6 @@ app.post('/events/:id/join', auth, async (req, res) => {
     details: `Dołączył do wydarzenia: ${event.title}`
   });
 
-  // Powiadom organizatora
   if (event.hostId.toString() !== req.user._id.toString()) {
     const notif = await Notification.create({
       user: event.hostId,
@@ -465,7 +472,6 @@ app.post('/events/:id/leave', auth, async (req, res) => {
   event.participants = event.participants.filter(id => id.toString() !== req.user._id.toString());
   await event.save();
 
-  // Logowanie aktywności
   await UserActivity.create({
     user: req.user._id,
     type: "left_event",
@@ -612,7 +618,6 @@ io.on('connection', (socket) => {
     } catch (e) {}
   });
 
-  // Przykład: Emitowanie powiadomienia przy dołączeniu do eventu
   socket.on("eventJoined", async ({ eventId, userId }) => {
     const event = await Event.findById(eventId);
     if (!event) return;
