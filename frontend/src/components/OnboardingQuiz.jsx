@@ -15,6 +15,13 @@ const preferenceQuestions = [
     multi: false
   },
   {
+    question: "Jakiej jesteś płci?",
+    type: "gender",
+    options: ["Kobieta", "Mężczyzna", "Nie chcę podawać", "Inna"],
+    required: true,
+    multi: false
+  },
+  {
     question: "Które z tych wydarzeń wybierasz najchętniej?",
     type: "favoriteEventType",
     options: [
@@ -86,7 +93,6 @@ const mbtiQuestions = [
   { question: "Lubię mieć jasno określone zasady i struktury.", dimension: "JP" }
 ];
 
-// Opisy typów MBTI
 const mbtiDescriptions = {
   ENFP: "Inspirator – kreatywny, entuzjastyczny, motywuje innych do działania.",
   ISTJ: "Logistyk – zorganizowany, odpowiedzialny, praktyczny.",
@@ -103,7 +109,6 @@ const mbtiDescriptions = {
   ESTJ: "Dyrektor – zorganizowany, odpowiedzialny, konkretny.",
   ESFJ: "Konsul – serdeczny, opiekuńczy, społeczny.",
   ESFP: "Animator – entuzjastyczny, spontaniczny, lubi zabawę.",
-  // Dodaj pozostałe jeśli chcesz
 };
 
 export default function OnboardingQuiz({ onUserUpdate }) {
@@ -112,7 +117,6 @@ export default function OnboardingQuiz({ onUserUpdate }) {
   const user = location.state?.user;
   const token = location.state?.token;
 
-  // Ochrona trasy (tylko dla zalogowanych)
   const isAuth = useAuth();
   useEffect(() => {
     if (!isAuth) navigate("/login", { replace: true });
@@ -120,7 +124,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
 
   const [step, setStep] = useState(0);
   const [prefAnswers, setPrefAnswers] = useState({});
-  const [mbtiAnswers, setMbtiAnswers] = useState(Array(mbtiQuestions.length).fill(null));
+  const [mbtiAnswers, setMbtiAnswers] = useState(Array(mbtiQuestions.length).fill(3));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mbtiType, setMbtiType] = useState(null);
@@ -153,7 +157,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
     setStep(s => s + 1);
   }
 
-  function handleMbtiSelect(idx, value) {
+  function handleMbtiSlider(idx, value) {
     const newMbti = [...mbtiAnswers];
     newMbti[idx] = value;
     setMbtiAnswers(newMbti);
@@ -184,7 +188,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
     setLoading(true);
     setError("");
     const mbti = calculateMBTI();
-    setMbtiType(mbti); // zapisz typ, żeby pokazać na ekranie sukcesu
+    setMbtiType(mbti);
     try {
       const body = {
         ...prefAnswers,
@@ -206,7 +210,7 @@ export default function OnboardingQuiz({ onUserUpdate }) {
 
       if (!res.ok) throw new Error("Błąd zapisu");
       if (onUserUpdate) await onUserUpdate();
-      setStep(preferenceQuestions.length + mbtiQuestions.length); // przejdź do ekranu sukcesu
+      setStep(preferenceQuestions.length + mbtiQuestions.length);
       setLoading(false);
     } catch {
       setError("Błąd połączenia z serwerem.");
@@ -306,23 +310,23 @@ export default function OnboardingQuiz({ onUserUpdate }) {
           </h2>
           <div className="w-full max-w-2xl flex flex-col items-center gap-8 animate-slide-up">
             <div className="text-2xl md:text-3xl font-bold text-indigo-700 text-center">{q.question}</div>
-            <div className="flex flex-wrap justify-center gap-4 w-full">
-              {[1,2,3,4,5].map(val => (
-                <button
-                  key={val}
-                  className={`
-                    px-8 py-4 rounded-2xl shadow-lg text-lg font-semibold transition
-                    border-2 border-amber-200
-                    ${mbtiAnswers[mbtiStep] === val
-                      ? "bg-amber-400 text-indigo-900 scale-105"
-                      : "bg-white hover:bg-amber-100"
-                    }
-                  `}
-                  onClick={() => handleMbtiSelect(mbtiStep, val)}
-                >
-                  {val === 1 ? "Zdecydowanie NIE" : val === 5 ? "Zdecydowanie TAK" : val}
-                </button>
-              ))}
+            <div className="w-full flex flex-col items-center">
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={mbtiAnswers[mbtiStep]}
+                onChange={e => handleMbtiSlider(mbtiStep, Number(e.target.value))}
+                className="w-full max-w-md mt-6 mb-2 accent-amber-400"
+              />
+              <div className="flex w-full max-w-md justify-between text-xs text-gray-500 mt-1">
+                <span>Zdecydowanie NIE</span>
+                <span>Raczej nie</span>
+                <span>Nie wiem</span>
+                <span>Raczej tak</span>
+                <span>Zdecydowanie TAK</span>
+              </div>
             </div>
             {error && <div className="text-red-600 text-lg text-center">{error}</div>}
             <div className="flex gap-6 mt-8">
@@ -347,7 +351,6 @@ export default function OnboardingQuiz({ onUserUpdate }) {
     );
   }
 
-  // EKRAN SUKCESU
   if (step === preferenceQuestions.length + mbtiQuestions.length && mbtiType) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-400 via-indigo-100 to-amber-100">

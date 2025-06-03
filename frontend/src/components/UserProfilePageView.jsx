@@ -26,6 +26,11 @@ export default function UserProfilePageView() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Opinie - input i obsługa
+  const [reviewForm, setReviewForm] = useState({ rating: 0, comment: "" });
+  const [reviewMsg, setReviewMsg] = useState("");
+  const [myReview, setMyReview] = useState(null);
+
   useEffect(() => {
     setLoading(true);
     fetch(`https://gramytu.onrender.com/users/${id}`)
@@ -37,12 +42,55 @@ export default function UserProfilePageView() {
         setReviews(data.reviews || []);
         setAvgRating(data.avgRating);
         setReviewCount(data.count || 0);
+        const myId = (localStorage.getItem("userId") || "").toString();
+        setMyReview(
+          data.reviews?.find(r => (r.author?._id || "").toString() === myId)
+        );
       });
     fetch(`https://gramytu.onrender.com/users/${id}/activity`)
       .then(res => res.json())
       .then(setActivity)
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Dodawanie opinii
+  const handleReviewSubmit = async e => {
+    e.preventDefault();
+    setReviewMsg("");
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`https://gramytu.onrender.com/users/${id}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(reviewForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReviewMsg("Opinia dodana!");
+        setReviewForm({ rating: 0, comment: "" });
+        // odśwież recenzje i myReview
+        fetch(`https://gramytu.onrender.com/users/${id}/reviews`)
+          .then(res => res.json())
+          .then(data => {
+            setReviews(data.reviews || []);
+            setAvgRating(data.avgRating);
+            setReviewCount(data.count || 0);
+            const myId = (localStorage.getItem("userId") || "").toString();
+            setMyReview(
+              data.reviews?.find(r => (r.author?._id || "").toString() === myId)
+            );
+          });
+      } else {
+        setReviewMsg(data.error || "Błąd dodawania opinii");
+      }
+    } catch {
+      setReviewMsg("Błąd sieci");
+    }
+  };
+
+  // Id zalogowanego użytkownika
+  const myId = (localStorage.getItem("userId") || "").toString();
+  const isOwnProfile = (user?._id || "").toString() === myId;
 
   if (loading) return <div className="p-8 text-center text-gray-500">Ładowanie profilu...</div>;
   if (!user) return <div className="p-8 text-center text-red-500">Nie znaleziono użytkownika.</div>;
@@ -135,6 +183,68 @@ export default function UserProfilePageView() {
               ({reviewCount} opinii)
             </span>
           </div>
+          {/* FORMULARZ OPINII */}
+          {!isOwnProfile && !myReview ? (
+            <form onSubmit={handleReviewSubmit} style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ fontWeight: 600, color: "#3730a3" }}>Twoja ocena:</label>
+              <div style={{ display: "flex", gap: 4 }}>
+                {[1,2,3,4,5].map(i => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setReviewForm(f => ({ ...f, rating: i }))}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: reviewForm.rating >= i ? "#facc15" : "#e5e7eb"
+                    }}
+                  >
+                    <FaStar size={24} />
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={reviewForm.comment}
+                onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                placeholder="Napisz opinię..."
+                rows={2}
+                style={{
+                  borderRadius: 12,
+                  border: "1px solid #e0e7ff",
+                  padding: 8,
+                  fontSize: 16,
+                  resize: "vertical"
+                }}
+                required
+              />
+              <button
+                type="submit"
+                style={{
+                  background: "linear-gradient(to right, #4f46e5, #3730a3)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  padding: "8px 24px",
+                  borderRadius: 12,
+                  fontSize: 16,
+                  cursor: "pointer",
+                  marginTop: 4
+                }}
+                disabled={reviewForm.rating === 0 || !reviewForm.comment.trim()}
+              >
+                Dodaj opinię
+              </button>
+              <div style={{ color: "#16a34a", fontWeight: 600 }}>{reviewMsg}</div>
+            </form>
+          ) : isOwnProfile ? (
+            <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>
+              Nie możesz ocenić samego siebie.
+            </div>
+          ) : myReview ? (
+            <div style={{ color: "#16a34a", fontWeight: 600, marginBottom: 8 }}>
+              Dziękujemy za Twoją opinię!
+            </div>
+          ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {reviews.length === 0 && (
               <div style={{ color: "#a1a1aa", fontStyle: "italic" }}>Brak opinii</div>
