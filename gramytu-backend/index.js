@@ -205,7 +205,6 @@ app.post('/users/:id/reviews', auth, async (req, res) => {
     if (req.user._id.toString() === req.params.id) {
       return res.status(400).json({ error: "Nie możesz ocenić samego siebie" });
     }
-    const existing = await UserReview.findOne({ user: req.params.id, author: req.user._id });
     const review = new UserReview({
       user: req.params.id,
       author: req.user._id,
