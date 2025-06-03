@@ -9,6 +9,7 @@ import iconPhysical from "../assets/marker-physical.png";
 import iconOther from "../assets/marker-other.png";
 import { FaHeart, FaRegHeart, FaSignInAlt, FaSignOutAlt, FaComments, FaTrash, FaCommentDots } from "react-icons/fa";
 import { io } from "socket.io-client";
+import { Link } from "react-router-dom";
 
 const API_URL = "https://gramytu.onrender.com";
 const SOCKET_URL = API_URL;
@@ -362,45 +363,7 @@ function CommentsSection({ eventId, user }) {
   );
 }
 
-function OrganizerNameButton({ hostId, fallback, setProfileUser, setShowProfile }) {
-  const [name, setName] = useState(fallback);
-
-  useEffect(() => {
-    if (!hostId) return;
-    fetch(`${API_URL}/users/${hostId}`)
-      .then(res => res.json())
-      .then(user => setName(user.username))
-      .catch(() => setName(fallback));
-  }, [hostId, fallback]);
-
-  return (
-    <button
-      className="text-indigo-600 underline hover:text-indigo-800"
-      type="button"
-      onClick={async () => {
-        if (hostId) {
-          try {
-            const res = await fetch(`${API_URL}/users/${hostId}`);
-            const user = await res.json();
-            setProfileUser(user);
-          } catch {
-            setProfileUser({ username: fallback, _id: hostId });
-          }
-        } else {
-          setProfileUser({ username: fallback, _id: hostId });
-        }
-        setShowProfile(true);
-      }}
-    >
-      {name}
-    </button>
-  );
-}
-
 export default function LandingMap({ events, user, setEvents }) {
-  const [showProfile, setShowProfile] = useState(false);
-  const [profileUser, setProfileUser] = useState(null);
-  const [organizerNames, setOrganizerNames] = useState({});
   const [commentsModalEvent, setCommentsModalEvent] = useState(null);
   const [participantsModalEvent, setParticipantsModalEvent] = useState(null);
   const [chatModalEvent, setChatModalEvent] = useState(null);
@@ -445,19 +408,6 @@ export default function LandingMap({ events, user, setEvents }) {
       await fetchParticipants(eventId);
       socketRef.current.emit("participantsUpdate", { eventId });
       setTimeout(() => setFlash(""), 2000);
-    }
-  };
-
-  const getOrganizerName = async (hostId, fallback) => {
-    if (!hostId) return fallback || "Nieznany";
-    if (organizerNames[hostId]) return organizerNames[hostId];
-    try {
-      const res = await fetch(`${API_URL}/users/${hostId}`);
-      const user = await res.json();
-      setOrganizerNames(names => ({ ...names, [hostId]: user.username }));
-      return user.username;
-    } catch {
-      return fallback || "Nieznany";
     }
   };
 
@@ -525,12 +475,12 @@ export default function LandingMap({ events, user, setEvents }) {
                       )}
                       <div className="text-xs text-gray-400 mt-2">
                         Organizator:{" "}
-                        <OrganizerNameButton
-                          hostId={ev.hostId}
-                          fallback={ev.host}
-                          setProfileUser={setProfileUser}
-                          setShowProfile={setShowProfile}
-                        />
+                        <Link
+                          to={`/user/${ev.hostId}`}
+                          className="text-indigo-600 underline hover:text-indigo-800"
+                        >
+                          {ev.host}
+                        </Link>
                       </div>
                       {ev.paid && (
                         <div className="text-xs text-indigo-700 font-semibold mb-1">
@@ -544,7 +494,6 @@ export default function LandingMap({ events, user, setEvents }) {
                       >
                         Zapisani: {participants.length}/{ev.maxParticipants}
                       </button>
-                      {/* --- IKONY: polubienia, komentarze, dołącz, opuść, czat, usuń --- */}
                       <div className="flex items-center gap-3 mt-3">
                         <LikeButton eventId={ev._id} user={user} />
                         <button

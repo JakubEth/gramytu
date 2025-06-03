@@ -8,7 +8,6 @@ const http = require('http');
 require('dotenv').config();
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-// --- Cloudinary upload ---
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
@@ -29,7 +28,7 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage });
 
-const { Event, User, ChatMessage } = require('./models');
+const { Event, User, ChatMessage, UserReview, UserActivity } = require('./models');
 const app = express();
 const server = http.createServer(app);
 
@@ -42,12 +41,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- ENDPOINT GŁÓWNY DLA HEALTH CHECK ---
 app.get('/', (req, res) => {
   res.sendStatus(200);
 });
 
-// --- MIDDLEWARE AUTORYZACJI ---
 const auth = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: "Brak tokenu autoryzacyjnego" });
@@ -78,7 +75,6 @@ app.get('/events/:id', async (req, res) => {
   }
 });
 
-// --- UTWÓRZ EVENT: organizator zawsze w participants ---
 app.post('/events', async (req, res) => {
   let participants = req.body.participants || [];
   if (!participants.map(id => id.toString()).includes(req.body.hostId)) {
@@ -153,6 +149,77 @@ app.post('/events/:id/comment', auth, async (req, res) => {
   }
 });
 
+// --- API DO OPINII I OCEN UŻYTKOWNIKA ---
+app.post('/users/:id/reviews', auth, async (req, res) => {
+  try {
+    if (!req.body.rating || !req.body.comment) {
+      return res.status(400).json({ error: "Ocena i komentarz są wymagane" });
+    }
+    if (req.user._id.toString() === req.params.id) {
+      return res.status(400).json({ error: "Nie możesz ocenić samego siebie" });
+    }
+    // Sprawdź, czy już oceniałeś tego usera (opcjonalnie)
+    const existing = await UserReview.findOne({ user: req.params.id, author: req.user._id });
+    if (existing) {
+      return res.status(400).json({ error: "Już dodałeś opinię o tym użytkowniku" });
+    }
+    const review = new UserReview({
+      user: req.params.id,
+      author: req.user._id,
+      rating: req.body.rating,
+      comment: req.body.comment
+    });
+    await review.save();
+
+    // Dodaj wpis do dziennika aktywności ocenianego i autora
+    await UserActivity.create([
+      {
+        user: req.params.id,
+        type: "rated",
+        date: new Date(),
+        details: `Otrzymał ocenę ${req.body.rating} od ${req.user.username}`
+      },
+      {
+        user: req.user._id,
+        type: "rated",
+        date: new Date(),
+        details: `Wystawił ocenę ${req.body.rating} użytkownikowi ${req.params.id}`
+      }
+    ]);
+
+    res.status(201).json(review);
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+app.get('/users/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await UserReview.find({ user: req.params.id })
+      .populate('author', 'username avatar')
+      .sort({ createdAt: -1 });
+    const avg =
+      reviews.length > 0
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2)
+        : null;
+    res.json({ avgRating: avg, count: reviews.length, reviews });
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
+// --- DZIENNIK AKTYWNOŚCI UŻYTKOWNIKA ---
+app.get('/users/:id/activity', async (req, res) => {
+  try {
+    const activities = await UserActivity.find({ user: req.params.id })
+      .sort({ date: -1 })
+      .limit(100);
+    res.json(activities);
+  } catch (error) {
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
+
 app.get('/users/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -163,7 +230,7 @@ app.get('/users/:id', async (req, res) => {
       email: user.email,
       avatar: user.avatar || null,
       createdAt: user.createdAt,
-      // DODAJ PREFERENCJE I MBTI:
+      gender: user.gender,
       mbtiType: user.mbtiType || null,
       isAdult: user.isAdult ?? null,
       favoriteEventType: user.favoriteEventType || null,
@@ -177,27 +244,21 @@ app.get('/users/:id', async (req, res) => {
   }
 });
 
-
-
-
-// --- UPLOAD AVATARA DO CLOUDINARY ---
 app.post('/users/:id/avatar', auth, upload.single('avatar'), async (req, res) => {
   if (req.user._id.toString() !== req.params.id) {
     return res.status(403).json({ error: "Brak uprawnień" });
   }
-  const avatarUrl = req.file.path; // Cloudinary URL
+  const avatarUrl = req.file.path;
   await User.findByIdAndUpdate(req.user._id, { avatar: avatarUrl });
   res.json({ avatar: avatarUrl });
 });
 
-// --- REJESTRACJA UŻYTKOWNIKA (nick + email + hasło) ---
 app.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, gender } = req.body;
     if (!username || !email || !password) {
       return res.status(400).json({ error: "Nick, e-mail i hasło są wymagane" });
     }
-    // Sprawdź czy nick lub email już istnieje
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
       if (existingUser.username === username) {
@@ -208,7 +269,7 @@ app.post('/register', async (req, res) => {
       }
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, email, password: hashedPassword });
+    const newUser = new User({ username, email, password: hashedPassword, gender });
     await newUser.save();
     const token = jwt.sign(
       { userId: newUser._id, username: newUser.username, email: newUser.email },
@@ -221,21 +282,19 @@ app.post('/register', async (req, res) => {
         _id: newUser._id,
         username: newUser.username,
         email: newUser.email,
-        createdAt: newUser.createdAt // <-- DODAJ TO!
+        createdAt: newUser.createdAt,
+        gender: newUser.gender
       }
     });
-    
   } catch (error) {
     console.error("Błąd rejestracji:", error);
     res.status(500).json({ error: "Błąd serwera" });
   }
 });
 
-// --- LOGOWANIE (nick lub email + hasło) ---
 app.post('/login', async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    // Pozwól logować się przez nick lub email
     const user = await User.findOne(
       username
         ? { username }
@@ -263,7 +322,8 @@ app.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         avatar: user.avatar,
-        createdAt: user.createdAt // <-- DODAJ TO!
+        createdAt: user.createdAt,
+        gender: user.gender
       }
     });
   } catch (error) {
@@ -274,10 +334,11 @@ app.post('/login', async (req, res) => {
 
 app.patch('/users/:id', async (req, res) => {
   try {
-    const { username, password, avatar } = req.body;
+    const { username, password, avatar, gender } = req.body;
     const update = {};
     if (username) update.username = username;
     if (avatar) update.avatar = avatar;
+    if (gender) update.gender = gender;
     if (password) update.password = await bcrypt.hash(password, 10);
 
     const oldUser = await User.findById(req.params.id);
@@ -296,7 +357,7 @@ app.patch('/users/:id', async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
-    res.json({ _id: user._id, username: user.username, avatar: user.avatar });
+    res.json({ _id: user._id, username: user.username, avatar: user.avatar, gender: user.gender });
   } catch (error) {
     console.error("Błąd aktualizacji użytkownika:", error);
     res.status(500).json({ error: "Błąd serwera" });
@@ -317,7 +378,6 @@ app.delete('/events/:id', auth, async (req, res) => {
   }
 });
 
-// --- DOŁĄCZANIE: organizator nie może dołączyć, jest zawsze uczestnikiem ---
 app.post('/events/:id/join', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
@@ -330,10 +390,20 @@ app.post('/events/:id/join', auth, async (req, res) => {
     return res.status(400).json({ error: "Już jesteś zapisany" });
   event.participants.push(req.user._id);
   await event.save();
+
+  // Logowanie aktywności
+  await UserActivity.create({
+    user: req.user._id,
+    type: "joined_event",
+    event: event._id,
+    eventTitle: event.title,
+    date: new Date(),
+    details: `Dołączył do wydarzenia: ${event.title}`
+  });
+
   res.json({ ok: true });
 });
 
-// --- OPUSZCZANIE: organizator nie może opuścić eventu ---
 app.post('/events/:id/leave', auth, async (req, res) => {
   const event = await Event.findById(req.params.id);
   if (!event) return res.status(404).json({ error: "Nie znaleziono wydarzenia" });
@@ -342,6 +412,17 @@ app.post('/events/:id/leave', auth, async (req, res) => {
   }
   event.participants = event.participants.filter(id => id.toString() !== req.user._id.toString());
   await event.save();
+
+  // Logowanie aktywności
+  await UserActivity.create({
+    user: req.user._id,
+    type: "left_event",
+    event: event._id,
+    eventTitle: event.title,
+    date: new Date(),
+    details: `Opuścił wydarzenie: ${event.title}`
+  });
+
   res.json({ ok: true });
 });
 
@@ -355,7 +436,6 @@ app.get('/events/:id/participants', async (req, res) => {
   }
 });
 
-// --- CZAT GRUPOWY: HISTORIA WIADOMOŚCI ---
 app.get('/events/:id/chat', async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -364,28 +444,24 @@ app.get('/events/:id/chat', async (req, res) => {
     }
     const eventObjectId = new Types.ObjectId(eventId);
 
-    // Pobierz wiadomości wraz z username i userId
     const messages = await ChatMessage.find({ eventId: eventObjectId })
       .sort({ createdAt: 1 })
-      .select('username text createdAt userId');
+      .select('username text createdAt userId readBy');
 
-    // Pobierz wszystkie userId z wiadomości
     const userIds = [...new Set(messages.map(m => m.userId.toString()))];
-    // Pobierz mapę userId -> avatar
     const users = await User.find({ _id: { $in: userIds } }).select('_id avatar');
     const avatarMap = {};
     users.forEach(u => { avatarMap[u._id.toString()] = u.avatar; });
 
-    // Dołącz avatar do każdej wiadomości
     const messagesWithAvatar = messages.map(m => ({
       _id: m._id,
       username: m.username,
       userId: m.userId,
       text: m.text,
       createdAt: m.createdAt,
-      avatar: avatarMap[m.userId.toString()] || null
+      avatar: avatarMap[m.userId.toString()] || null,
+      readBy: m.readBy
     }));
-
     res.json(messagesWithAvatar);
   } catch (error) {
     console.error("Błąd w /events/:id/chat:", error);
@@ -393,7 +469,6 @@ app.get('/events/:id/chat', async (req, res) => {
   }
 });
 
-// --- CZAT GRUPOWY: USUWANIE WIADOMOŚCI ---
 app.delete('/events/:eventId/chat/:msgId', async (req, res) => {
   try {
     const { eventId, msgId } = req.params;
@@ -428,7 +503,6 @@ io.on('connection', (socket) => {
 
   socket.on('eventMessage', async ({ eventId, text }) => {
     if (!socket.user || !eventId || !text?.trim()) return;
-    // Pobierz avatar użytkownika
     const userDoc = await User.findById(socket.user.userId).select('avatar');
     const avatar = userDoc?.avatar || null;
 
@@ -437,6 +511,7 @@ io.on('connection', (socket) => {
       userId: socket.user.userId,
       username: socket.user.username,
       text,
+      readBy: [socket.user.userId] // autor od razu ma przeczytane
     });
     io.to(eventId).emit('eventMessage', {
       _id: msg._id,
@@ -444,7 +519,8 @@ io.on('connection', (socket) => {
       userId: msg.userId,
       text: msg.text,
       createdAt: msg.createdAt,
-      avatar // <-- DOŁĄCZ AVATAR!
+      avatar,
+      readBy: msg.readBy
     });
     console.log("Socket.io: eventMessage sent and saved", msg);
   });
@@ -463,15 +539,14 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log("Socket.io: user disconnected");
   });
+
+  // READ RECEIPTS
   socket.on('readMessages', async ({ eventId, userId, lastReadMessageId }) => {
     try {
-      // Pobierz wszystkie wiadomości z eventu do momentu lastReadMessageId
       const messagesToUpdate = await ChatMessage.find({
         eventId,
         _id: { $lte: lastReadMessageId }
       });
-
-      // Zaktualizuj readBy dla każdej z tych wiadomości
       for (const msg of messagesToUpdate) {
         if (!msg.readBy.map(id => id.toString()).includes(userId)) {
           msg.readBy.push(userId);
@@ -479,7 +554,6 @@ io.on('connection', (socket) => {
         }
       }
       const user = await User.findById(userId).select('username avatar');
-      // Emituj info do innych w pokoju, kto co przeczytał
       io.to(eventId.toString()).emit('messagesRead', {
         user: { _id: user._id, username: user.username, avatar: user.avatar },
         lastReadMessageId
@@ -487,9 +561,8 @@ io.on('connection', (socket) => {
     } catch (e) {
       console.error("readMessages error", e);
     }
-})
+  });
 });
-
 
 // --- GIPHY PROXY ENDPOINT Z DEBUGIEM ---
 console.log("DEBUG: process.env.GIPHY_API_KEY =", process.env.GIPHY_API_KEY);
@@ -518,12 +591,9 @@ app.get('/giphy/search', async (req, res) => {
 
 app.patch('/users/:id/preferences', auth, async (req, res) => {
   try {
-    // Tylko właściciel może edytować swoje preferencje
     if (req.user._id.toString() !== req.params.id) {
       return res.status(403).json({ error: "Brak uprawnień" });
     }
-
-    // Przygotuj update tylko z dozwolonych pól
     const update = {};
     if (typeof req.body.isAdult === "boolean") update.isAdult = req.body.isAdult;
     if (req.body.favoriteEventType) update.favoriteEventType = req.body.favoriteEventType;
@@ -532,6 +602,7 @@ app.patch('/users/:id/preferences', auth, async (req, res) => {
     if (Array.isArray(req.body.preferredTags)) update.preferredTags = req.body.preferredTags;
     if (req.body.preferredMode) update.preferredMode = req.body.preferredMode;
     if (req.body.mbtiType) update.mbtiType = req.body.mbtiType;
+    if (req.body.gender) update.gender = req.body.gender;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -547,8 +618,6 @@ app.patch('/users/:id/preferences', auth, async (req, res) => {
     res.status(500).json({ error: "Błąd serwera", details: err.message });
   }
 });
-
-
 
 const PORT = process.env.PORT || 10000;
 
