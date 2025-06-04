@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/react.png";
 import NotificationsBell from "./NotificationsBell";
 
+const API_URL = "https://gramytu.onrender.com"; // <-- podmień na swój backend
+
 const getDefaultAvatar = username =>
   "https://ui-avatars.com/api/?name=" +
   encodeURIComponent(username || "U") +
@@ -42,7 +44,7 @@ export default function Header({
       return;
     }
     const controller = new AbortController();
-    fetch(`/autocomplete?query=${encodeURIComponent(searchQuery)}`, { signal: controller.signal })
+    fetch(`${API_URL}/autocomplete?query=${encodeURIComponent(searchQuery)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         setSuggestions(data);
