@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/react.png";
 import NotificationsBell from "./NotificationsBell";
 
-const API_URL = "https://gramytu.onrender.com"; // <-- podmień na swój backend
+const API_URL = "https://gramytu.onrender.com";
 
 const getDefaultAvatar = username =>
   "https://ui-avatars.com/api/?name=" +
@@ -99,7 +99,15 @@ export default function Header({
         {/* Pole wyszukiwania z podpowiedziami */}
         <div
           ref={searchInputRef}
-          style={{ marginLeft: 32, minWidth: 320, width: 400, maxWidth: 480, position: "relative" }}
+          style={{
+            marginLeft: 24,
+            minWidth: 200,
+            width: "100%",
+            maxWidth: 280,
+            position: "relative",
+            flexShrink: 1,
+            flexGrow: 1
+          }}
         >
           <span
             style={{
@@ -131,8 +139,8 @@ export default function Header({
               boxShadow: "0 2px 16px #6366f111",
               background: "#f1f5fe",
               border: "1.5px solid #c7d2fe",
-              minWidth: 320,
-              maxWidth: 480
+              minWidth: 180,
+              maxWidth: 280
             }}
             aria-label="Szukaj"
             autoComplete="off"
@@ -207,7 +215,7 @@ export default function Header({
           )}
         </div>
       </div>
-      <nav className="flex gap-6 items-center">
+      <nav className="flex gap-3 items-center">
         <button
           type="button"
           className="hover:text-indigo-700 font-medium transition bg-transparent border-none outline-none cursor-pointer"

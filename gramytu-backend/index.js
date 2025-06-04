@@ -829,44 +829,67 @@ app.delete('/users/:id', async (req, res) => {
   }
 
   try {
-    // Usuń opinie wystawione temu użytkownikowi i przez niego
-    await Promise.all([
-      // Opinie o nim
-      mongoose.model('UserReview').deleteMany({ user: userId }),
-      // Opinie przez niego wystawione
-      mongoose.model('UserReview').deleteMany({ author: userId }),
-      // Aktywność
-      mongoose.model('UserActivity').deleteMany({ user: userId }),
-      // Jako uczestnik eventu
-      mongoose.model('Event').updateMany(
-        { participants: userId },
-        { $pull: { participants: userId } }
-      ),
-      // Jako host eventu (opcjonalnie: możesz usunąć eventy, których jest hostem)
-      // await mongoose.model('Event').deleteMany({ hostId: userId }),
-      // Followers/following
-      mongoose.model('User').updateMany(
-        { followers: userId },
-        { $pull: { followers: userId } }
-      ),
-      mongoose.model('User').updateMany(
-        { following: userId },
-        { $pull: { following: userId } }
-      ),
-      // Powiadomienia
-      mongoose.model('Notification').deleteMany({ user: userId }),
-      // Wiadomości czatu
-      mongoose.model('ChatMessage').deleteMany({ userId }),
-    ]);
-    // Usuń konto
+    // 1. Usuń UserReview (opinie o nim i przez niego)
+    await mongoose.model('UserReview').deleteMany({ $or: [{ user: userId }, { author: userId }] });
+
+    // 2. Usuń UserActivity, także z activityLog innych userów
+    await mongoose.model('UserActivity').deleteMany({ user: userId });
+    await mongoose.model('User').updateMany(
+      { "activityLog.user": userId },
+      { $pull: { activityLog: { user: userId } } }
+    );
+
+    // 3. Usuń powiadomienia, gdzie user jest odbiorcą
+    await mongoose.model('Notification').deleteMany({ user: userId });
+
+    // 4. Usuń usera z followers/following/friends innych userów
+    await mongoose.model('User').updateMany(
+      { followers: userId },
+      { $pull: { followers: userId } }
+    );
+    await mongoose.model('User').updateMany(
+      { following: userId },
+      { $pull: { following: userId } }
+    );
+    await mongoose.model('User').updateMany(
+      { friends: userId },
+      { $pull: { friends: userId } }
+    );
+
+    // 5. Usuń usera z uczestników eventów
+    await mongoose.model('Event').updateMany(
+      { participants: userId },
+      { $pull: { participants: userId } }
+    );
+
+    // 6. Usuń usera z lajków eventów
+    await mongoose.model('Event').updateMany(
+      { likes: userId },
+      { $pull: { likes: userId } }
+    );
+
+    // 7. Usuń komentarze usera z eventów
+    await mongoose.model('Event').updateMany(
+      { "comments.user": userId },
+      { $pull: { comments: { user: userId } } }
+    );
+
+    // 8. Usuń wiadomości czatu usera
+    await mongoose.model('ChatMessage').deleteMany({ userId });
+
+    // 9. (Opcjonalnie) Usuń eventy, których był hostem
+    await mongoose.model('Event').deleteMany({ hostId: userId });
+
+    // 10. Usuń konto usera
     await mongoose.model('User').findByIdAndDelete(userId);
 
-    res.json({ ok: true, message: "Konto i powiązane dane usunięte" });
+    res.json({ ok: true, message: "Konto i wszystkie powiązane dane usunięte." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Błąd usuwania konta" });
   }
 });
+
 
 
 const PORT = process.env.PORT || 10000;
