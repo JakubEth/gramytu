@@ -10,7 +10,6 @@ import { Link, useNavigate } from "react-router-dom";
 const API_URL = "https://gramytu.onrender.com";
 const SOCKET_URL = API_URL;
 
-// Oryginalne ikony pinów
 const icons = {
   planszowka: L.icon({ iconUrl: "../marker-boardgame.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
   komputerowa: L.icon({ iconUrl: "/marker-computer.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
@@ -18,10 +17,8 @@ const icons = {
   inne: L.icon({ iconUrl: "/marker-other.png", iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38] }),
 };
 
-// DivIcon z subtelną kropką z avatarem NAD pinem (tylko dla własnych eventów)
 function getUserPinIconWithAvatarDot({ type, avatarUrl }) {
   const baseIcon = icons[type] || icons.inne;
-
   return L.divIcon({
     className: "",
     iconAnchor: baseIcon.options.iconAnchor,
@@ -147,7 +144,8 @@ function ParticipantsList({ eventId }) {
   );
 }
 
-export default function LandingMap({ events, user, setEvents }) {
+// KLUCZ: wysokość mapy jako props (domyślnie 350px na home, 100vh-120px na /events)
+export default function LandingMap({ events, user, setEvents, height = "350px" }) {
   const [participantsModalEvent, setParticipantsModalEvent] = useState(null);
   const [flash, setFlash] = useState("");
   const [participantsMap, setParticipantsMap] = useState({});
@@ -201,7 +199,7 @@ export default function LandingMap({ events, user, setEvents }) {
   };
 
   return (
-    <div className="w-full h-[350px] rounded-2xl overflow-hidden shadow-xl mb-4">
+    <div style={{ width: "100%", height }}>
       {flash && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow z-50">
           {flash}
@@ -213,7 +211,7 @@ export default function LandingMap({ events, user, setEvents }) {
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+          attribution=''
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MarkerClusterGroup chunkedLoading>

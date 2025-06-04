@@ -108,9 +108,10 @@ app.post('/notifications', async (req, res) => {
 // --- ENDPOINTY EVENTÓW, USERÓW, CZATU, ETC. ---
 
 app.get('/events', async (req, res) => {
-  const events = await Event.find();
+  const events = await Event.find().populate('hostId', 'username avatar');
   res.json(events);
 });
+
 
 app.get('/events/:id', async (req, res) => {
   try {

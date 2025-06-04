@@ -1,110 +1,133 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import LandingMap from "./LandingMap";
+import "leaflet/dist/leaflet.css";
 
-export default function EventsList() {
+const API_URL = "https://gramytu.onrender.com";
+
+// Funkcja do generowania domyślnego awatara (identycznie jak w UserProfilePageView)
+const defaultAvatar = username =>
+  "https://ui-avatars.com/api/?name=" +
+  encodeURIComponent(username || "U") +
+  "&background=E0E7FF&color=3730A3&bold=true";
+
+export default function EventsList({ user }) {
   const [events, setEvents] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState("");
-  const [date, setDate] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Pobierz eventy z API przy starcie
   useEffect(() => {
-    fetch("https://gramytu.onrender.com/events")
+    fetch(`${API_URL}/events`)
       .then(res => res.json())
-      .then(setEvents);
+      .then(data => {
+        setEvents(data);
+        setLoading(false);
+      });
   }, []);
 
-  // Filtrowanie
-  useEffect(() => {
-    let data = [...events];
-    if (search.trim()) {
-      const s = search.trim().toLowerCase();
-      data = data.filter(ev =>
-        ev.title.toLowerCase().includes(s) ||
-        ev.description?.toLowerCase().includes(s) ||
-        ev.location?.name?.toLowerCase().includes(s) ||
-        ev.host?.toLowerCase().includes(s)
-      );
-    }
-    if (type) {
-      data = data.filter(ev => ev.type === type);
-    }
-    if (date) {
-      data = data.filter(ev => ev.date?.slice(0, 10) === date);
-    }
-    setFiltered(data);
-  }, [events, search, type, date]);
-
   return (
-    <div className="max-w-3xl mx-auto py-8">
-      <h1 className="text-2xl font-bold text-indigo-700 mb-4">Przeglądaj wydarzenia</h1>
-      <div className="flex flex-wrap gap-4 mb-6">
-        <input
-          className="px-4 py-2 rounded-lg border border-gray-300 outline-none"
-          placeholder="Szukaj po tytule, miejscu, opisie, organizatorze..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="px-4 py-2 rounded-lg border border-gray-300 outline-none"
-          value={type}
-          onChange={e => setType(e.target.value)}
-        >
-          <option value="">Wszystkie typy</option>
-          <option value="planszowka">Planszówka</option>
-          <option value="komputerowa">Gra komputerowa</option>
-          <option value="fizyczna">Gra fizyczna</option>
-          <option value="inne">Coś innego</option>
-        </select>
-        <input
-          type="date"
-          className="px-4 py-2 rounded-lg border border-gray-300 outline-none"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-        />
-        <button
-          className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700"
-          onClick={() => { setSearch(""); setType(""); setDate(""); }}
-        >
-          Wyczyść filtry
-        </button>
-      </div>
-      <div className="flex flex-col gap-4">
-        {filtered.length === 0 && (
-          <div className="text-gray-500 text-center py-12">Brak wydarzeń spełniających kryteria.</div>
-        )}
-        {filtered.map(ev => (
-          <div
-            key={ev._id}
-            className="bg-white rounded-xl shadow p-4 flex flex-col md:flex-row md:items-center gap-2 border-l-4 border-indigo-200"
-          >
-            <div className="flex-1">
-              <div className="font-bold text-lg text-indigo-700">{ev.title}</div>
-              <div className="text-sm text-gray-500 mb-1">
-                {ev.date?.slice(0, 10)} • {ev.location?.name}
-              </div>
-              <div className="text-sm text-gray-700 mb-1">{ev.description}</div>
-              <div className="text-xs text-gray-400">
-                Organizator: <b>{ev.host}</b>
-              </div>
-              {ev.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {ev.tags.map(tag => (
-                    <span key={tag} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{tag}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-2 min-w-[120px]">
-              <a
-                href={`mailto:${ev.contact}`}
-                className="text-indigo-600 hover:underline text-sm"
+    <div
+      style={{
+        height: "calc(100vh - 120px)",
+        width: "100vw",
+        display: "flex",
+        flexDirection: "row",
+        background: "#f1f5f9",
+        overflow: "hidden"
+      }}
+    >
+      {/* Lewa kolumna z listą eventów */}
+      <div
+        style={{
+          width: "min(320px, 16.66vw)",
+          minWidth: 240,
+          maxWidth: 400,
+          background: "#fff",
+          borderRight: "1px solid #e5e7eb",
+          overflowY: "auto",
+          height: "100%",
+          boxShadow: "2px 0 8px #0001",
+          zIndex: 2
+        }}
+      >
+        <div style={{ padding: "16px", fontWeight: 700, fontSize: "1.1rem", borderBottom: "1px solid #e5e7eb" }}>
+          Wydarzenia
+        </div>
+        {loading ? (
+          <div className="text-gray-400 text-center p-4">Ładowanie...</div>
+        ) : (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {events.length === 0 && (
+              <li className="text-gray-400 text-center p-4">Brak wydarzeń</li>
+            )}
+            {events.map(ev => (
+              <li
+                key={ev._id}
+                style={{
+                  borderBottom: "1px solid #f1f5f9",
+                  padding: "16px 12px",
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }}
+                className="hover:bg-indigo-50"
               >
-                {ev.contact}
-              </a>
-            </div>
-          </div>
-        ))}
+                {/* Zdjęcie wydarzenia */}
+                <img
+                  src={ev.image}
+                  alt={ev.title}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    objectFit: "cover",
+                    flexShrink: 0,
+                    border: "1px solid #e5e7eb",
+                    background: "#f1f5f9"
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Tytuł i kategoria */}
+                  <div style={{ fontWeight: 600, color: "#3730a3", fontSize: 16 }}>
+                    {ev.title}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
+                    Kategoria: <span style={{ color: "#2563eb" }}>{ev.type}</span>
+                  </div>
+                  {/* Organizator */}
+                  <div style={{ display: "flex", alignItems: "center", marginTop: 4, fontSize: 13, color: "#555" }}>
+                  <img
+  src={ev.hostId?.avatar || defaultAvatar(ev.hostId?.username || ev.host)}
+  alt={ev.hostId?.username || ev.host}
+  style={{
+    width: 22,
+    height: 22,
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "1px solid #e0e7ff",
+    marginRight: 6
+  }}
+/>
+{ev.hostId?.username || ev.host}
+                  </div>
+                  {/* Liczba uczestników */}
+                  <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
+                    Uczestnicy: {ev.participants?.length || 0}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {/* Prawa kolumna z mapą */}
+      <div style={{ flex: 1, height: "100%" }}>
+        <LandingMap
+          events={events}
+          user={user}
+          setEvents={setEvents}
+          height="100%"
+        />
       </div>
     </div>
   );
