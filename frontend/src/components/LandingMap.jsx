@@ -269,9 +269,8 @@ export default function LandingMap({ events, user, setEvents, height = "350px" }
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-xs text-gray-400 mt-2 mb-1">
-                        <span>Organizator:</span>
                         <Link
-                          to={`/user/${ev.hostId}`}
+                          to={`/user/${typeof ev.hostId === "object" && ev.hostId !== null ? ev.hostId._id : ev.hostId}`}
                           className="flex items-center gap-1 hover:bg-indigo-50 px-2 py-1 rounded transition"
                         >
                           <img
