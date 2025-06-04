@@ -64,18 +64,12 @@ export default function UserProfilePageView() {
   const myId = (localStorage.getItem("userId") || "").toString();
   const isOwnProfile = (user?._id || "").toString() === myId;
 
-  // Debugowanie stanu obserwowania
   useEffect(() => {
     if (!user || !Array.isArray(user.followers)) return;
     const followersStr = user.followers.map(f => f.toString());
-    console.log("DEBUG myId:", myId, typeof myId);
-    console.log("DEBUG followers:", user.followers);
-    console.log("DEBUG followersStr:", followersStr);
-    console.log("DEBUG includes:", followersStr.includes(myId.toString()));
     setIsFollowing(followersStr.includes(myId.toString()));
   }, [user, myId]);
 
-  // Dodawanie opinii (wielokrotnie)
   const handleReviewSubmit = async e => {
     e.preventDefault();
     setReviewMsg("");
@@ -105,24 +99,20 @@ export default function UserProfilePageView() {
     }
   };
 
-  // OBSERWUJ/ODOBSERWUJ
   const handleFollow = async () => {
     setFollowLoading(true);
     const token = localStorage.getItem("token");
     if (isFollowing) {
-      // Od-obserwuj (nie wysyłaj powiadomienia)
       await fetch(`${API_URL}/users/${id}/unfollow`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
     } else {
-      // Obserwuj (wysyłane powiadomienie przez backend)
       await fetch(`${API_URL}/users/${id}/follow`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
     }
-    // ZAWSZE pobierz usera jeszcze raz po kliknięciu
     fetch(`${API_URL}/users/${id}`)
       .then(res => res.json())
       .then(data => {
@@ -139,14 +129,67 @@ export default function UserProfilePageView() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #e0e7ff 0%, #fff 50%, #ede9fe 100%)",
+      background: "linear-gradient(135deg, #e0e7ef 0%, #f1f5f9 60%, #e0e7ff 100%)",
       display: "flex",
       justifyContent: "center",
-      padding: "48px 8px"
+      alignItems: "flex-start",
+      padding: "48px 0"
     }}>
+      {/* LEWA REKLAMA */}
+      <div style={{
+        width: 160,
+        minWidth: 120,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        margin: "32px 0"
+      }}>
+        <div style={{
+          width: 160,
+          height: 600,
+          background: "#000",
+          border: "2px solid #d1d5db",
+          borderRadius: 24,
+          boxShadow: "0 8px 32px #0002",
+          overflow: "hidden",
+          position: "relative"
+        }}>
+          <video
+            preload="none"
+            poster="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.png"
+            width="100%"
+            height="100%"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+          >
+            <source src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.mp4" type="video/mp4" />
+            <p>
+              <a
+                href="https://dolphin-anty.com/"
+                target="_blank"
+                rel="nofollow"
+              >
+                <img
+                  src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/14May25-May_BHW_160_600.png"
+                  border="0"
+                  width="160"
+                  height="600"
+                  alt=""
+                  style={{ display: "block" }}
+                />
+              </a>
+            </p>
+          </video>
+        </div>
+      </div>
+
+      {/* ŚRODKOWY PROFIL */}
       <div style={{
         flex: 1,
-        background: "rgba(255,255,255,0.9)",
+        background: "rgba(255,255,255,0.95)",
         borderRadius: 32,
         boxShadow: "0 8px 32px #0002",
         padding: 40,
@@ -195,9 +238,9 @@ export default function UserProfilePageView() {
                   disabled={followLoading}
                   style={{
                     marginLeft: 12,
-                    background: isFollowing ? "#fff" : "#4f46e5",
-                    color: isFollowing ? "#4f46e5" : "#fff",
-                    border: isFollowing ? "2px solid #4f46e5" : "none",
+                    background: isFollowing ? "#fff" : "#3730a3",
+                    color: isFollowing ? "#3730a3" : "#fff",
+                    border: isFollowing ? "2px solid #3730a3" : "none",
                     fontWeight: 700,
                     padding: "10px 28px",
                     borderRadius: 24,
@@ -291,7 +334,7 @@ export default function UserProfilePageView() {
               <button
                 type="submit"
                 style={{
-                  background: "linear-gradient(to right, #4f46e5, #3730a3)",
+                  background: "linear-gradient(to right, #3730a3, #6366f1)",
                   color: "#fff",
                   fontWeight: 700,
                   padding: "8px 24px",
@@ -346,6 +389,57 @@ export default function UserProfilePageView() {
             ))}
           </div>
         </section>
+      </div>
+
+      {/* PRAWA REKLAMA */}
+      <div style={{
+        width: 160,
+        minWidth: 120,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        margin: "32px 0"
+      }}>
+        <div style={{
+          width: 160,
+          height: 600,
+          background: "#000",
+          border: "2px solid #d1d5db",
+          borderRadius: 24,
+          boxShadow: "0 8px 32px #0002",
+          overflow: "hidden",
+          position: "relative"
+        }}>
+          <video
+            preload="none"
+            poster="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.png"
+            width="100%"
+            height="100%"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+          >
+            <source src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.mp4" type="video/mp4" />
+            <p>
+              <a
+                href="https://proxidize.com/proxy-server/mobile-proxies/"
+                target="_blank"
+                rel="nofollow"
+              >
+                <img
+                  src="https://videos.advertserve.com/7ea0b05c7869582dc6039aa619dc080f/30May25-160x600-BHW_6B.png"
+                  border="0"
+                  width="160"
+                  height="600"
+                  alt=""
+                  style={{ display: "block" }}
+                />
+              </a>
+            </p>
+          </video>
+        </div>
       </div>
     </div>
   );

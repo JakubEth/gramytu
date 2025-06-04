@@ -812,6 +812,63 @@ app.post('/users/:id/unfollow', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// --- USUWANIE UŻYTKOWNIKA I POWIĄZANYCH DANYCH ---
+app.delete('/users/:id', async (req, res) => {
+  const userId = req.params.id;
+
+  // Autoryzacja: tylko właściciel lub admin
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: "Brak tokenu" });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.userId !== userId) {
+      return res.status(403).json({ error: "Brak uprawnień" });
+    }
+  } catch (err) {
+    return res.status(401).json({ error: "Nieprawidłowy token" });
+  }
+
+  try {
+    // Usuń opinie wystawione temu użytkownikowi i przez niego
+    await Promise.all([
+      // Opinie o nim
+      mongoose.model('UserReview').deleteMany({ user: userId }),
+      // Opinie przez niego wystawione
+      mongoose.model('UserReview').deleteMany({ author: userId }),
+      // Aktywność
+      mongoose.model('UserActivity').deleteMany({ user: userId }),
+      // Jako uczestnik eventu
+      mongoose.model('Event').updateMany(
+        { participants: userId },
+        { $pull: { participants: userId } }
+      ),
+      // Jako host eventu (opcjonalnie: możesz usunąć eventy, których jest hostem)
+      // await mongoose.model('Event').deleteMany({ hostId: userId }),
+      // Followers/following
+      mongoose.model('User').updateMany(
+        { followers: userId },
+        { $pull: { followers: userId } }
+      ),
+      mongoose.model('User').updateMany(
+        { following: userId },
+        { $pull: { following: userId } }
+      ),
+      // Powiadomienia
+      mongoose.model('Notification').deleteMany({ user: userId }),
+      // Wiadomości czatu
+      mongoose.model('ChatMessage').deleteMany({ userId }),
+    ]);
+    // Usuń konto
+    await mongoose.model('User').findByIdAndDelete(userId);
+
+    res.json({ ok: true, message: "Konto i powiązane dane usunięte" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd usuwania konta" });
+  }
+});
+
+
 const PORT = process.env.PORT || 10000;
 
 mongoose.connect(process.env.MONGO_URI)

@@ -42,6 +42,11 @@ export default function UserProfilePage({ user, onUpdate }) {
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
 
+  // Usuwanie konta
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
     if (!user?._id) return;
     fetch(`https://gramytu.onrender.com/users/${user._id}/reviews`)
@@ -160,8 +165,35 @@ export default function UserProfilePage({ user, onUpdate }) {
     }
   };
 
+  // Usuwanie konta
   const myId = localStorage.getItem("userId");
   const isOwnProfile = user?._id === myId;
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteMsg("");
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`https://gramytu.onrender.com/users/${user._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setDeleteMsg("Konto zostało usunięte. Za chwilę nastąpi wylogowanie.");
+        // Wylogowanie i przekierowanie
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = "/";
+        }, 2000);
+      } else {
+        const data = await res.json();
+        setDeleteMsg(data.error || "Błąd usuwania konta");
+      }
+    } catch {
+      setDeleteMsg("Błąd sieci");
+    }
+    setDeleteLoading(false);
+  };
 
   return (
     <div style={{
@@ -233,55 +265,19 @@ export default function UserProfilePage({ user, onUpdate }) {
         gap: 40
       }}>
         <div style={{ display: "flex", flexDirection: "row", gap: 40, alignItems: "flex-start" }}>
-          {/* Avatar i upload */}
-          <div style={{ position: "relative" }}>
-            <img
-              src={avatarPreview || defaultAvatar(user?.username)}
-              alt="Profil"
-              style={{
-                width: 160,
-                height: 160,
-                borderRadius: "50%",
-                border: "8px solid #e0e7ff",
-                objectFit: "cover",
-                boxShadow: "0 4px 16px #0002",
-                transition: "transform .3s"
-              }}
-            />
-            {edit && (
-              <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  ref={fileInputRef}
-                  onChange={handleAvatarChange}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current.click()}
-                  style={{
-                    position: "absolute",
-                    bottom: 8,
-                    right: 8,
-                    background: "#4f46e5",
-                    color: "#fff",
-                    borderRadius: "50%",
-                    padding: 12,
-                    boxShadow: "0 2px 8px #0002",
-                    opacity: 0.9,
-                    border: "none",
-                    cursor: "pointer"
-                  }}
-                  aria-label="Zmień zdjęcie profilowe"
-                  disabled={loading}
-                >
-                  <FaCamera size={20} />
-                </button>
-              </>
-            )}
-          </div>
-          {/* Dane i social */}
+          <img
+            src={avatarPreview || defaultAvatar(user?.username)}
+            alt="Profil"
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: "50%",
+              border: "8px solid #e0e7ff",
+              objectFit: "cover",
+              boxShadow: "0 4px 16px #0002",
+              transition: "transform .3s"
+            }}
+          />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <h1 style={{ fontSize: 32, fontWeight: 800, color: "#3730a3" }}>{user?.username || "Użytkownik"}</h1>
@@ -343,7 +339,81 @@ export default function UserProfilePage({ user, onUpdate }) {
               >
                 Edytuj profil
               </button>
+              {isOwnProfile && (
+                <button
+                  style={{
+                    marginLeft: 16,
+                    background: "#fff",
+                    color: "#b91c1c",
+                    fontWeight: 700,
+                    padding: "12px 32px",
+                    borderRadius: 16,
+                    border: "2px solid #b91c1c",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px #0002"
+                  }}
+                  onClick={() => setShowDelete(true)}
+                  disabled={deleteLoading}
+                >
+                  Usuń konto
+                </button>
+              )}
             </div>
+            {showDelete && (
+              <div style={{
+                marginTop: 20,
+                background: "#fff0f0",
+                border: "2px solid #b91c1c",
+                borderRadius: 16,
+                padding: 24,
+                color: "#b91c1c",
+                fontWeight: 600,
+                boxShadow: "0 2px 8px #0002"
+              }}>
+                <div style={{ marginBottom: 12 }}>
+                  Czy na pewno chcesz <b>usunąć swoje konto</b>? Ta operacja jest nieodwracalna i usunie wszystkie Twoje dane, opinie, aktywność i powiązania.
+                </div>
+                <button
+                  style={{
+                    background: "#b91c1c",
+                    color: "#fff",
+                    fontWeight: 700,
+                    padding: "10px 28px",
+                    borderRadius: 12,
+                    fontSize: 16,
+                    marginRight: 12,
+                    cursor: "pointer",
+                    border: "none"
+                  }}
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading}
+                >
+                  Tak, usuń moje konto
+                </button>
+                <button
+                  style={{
+                    background: "#fff",
+                    color: "#3730a3",
+                    fontWeight: 700,
+                    padding: "10px 28px",
+                    borderRadius: 12,
+                    fontSize: 16,
+                    cursor: "pointer",
+                    border: "2px solid #3730a3"
+                  }}
+                  onClick={() => setShowDelete(false)}
+                  disabled={deleteLoading}
+                >
+                  Anuluj
+                </button>
+                {deleteMsg && (
+                  <div style={{ marginTop: 10, color: deleteMsg.includes("usunięte") ? "#16a34a" : "#b91c1c" }}>
+                    {deleteMsg}
+                  </div>
+                )}
+              </div>
+            )}
             <div style={{ marginTop: 16 }}>
               <h3 style={{ fontWeight: 700, fontSize: 18, color: "#3730a3" }}>O mnie</h3>
               <p style={{ color: "#52525b" }}>{user.bio || "Jeszcze nie uzupełniono opisu."}</p>

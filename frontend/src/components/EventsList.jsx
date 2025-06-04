@@ -207,7 +207,7 @@ export default function EventsList({ user }) {
           height: BUTTON_SIZE,
           borderRadius: buttonRadius,
           background: "#fff",
-          border: "2px solid #2563eb",
+          border: "2px solid #e0e7ff",
           borderLeft: "none",
           color: "#2563eb",
           fontSize: 28,
