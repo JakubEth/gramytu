@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 
+const API_URL = "https://gramytu.onrender.com"; // <-- podmień na swój backend
+
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("query") || "";
@@ -10,7 +12,7 @@ export default function SearchResults() {
   useEffect(() => {
     if (!query) return;
     setLoading(true);
-    fetch(`/search?query=${encodeURIComponent(query)}`)
+    fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`)
       .then(res => res.json())
       .then(setResults)
       .finally(() => setLoading(false));
