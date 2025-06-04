@@ -193,9 +193,9 @@ export default function EventsTinder() {
 
       {/* NAJGORETSZE EVENTY */}
       <div style={{
-        width: 260,
-        minWidth: 180,
-        marginTop: "24px",
+        marginTop: 60,
+        minWidth: 350,
+        maxWidth: 420,
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-end"
@@ -235,10 +235,10 @@ export default function EventsTinder() {
                 background: i === 0
                   ? pastelYellow
                   : i === 1
-                  ? pastelRed
+                  ? "#D3D3D3"
                   : i === 2
-                  ? pastelBlue
-                  : pastelPurple,
+                  ? "#e7cfae"
+                  : "#fff",
                 border: `1.5px solid ${pastelBorder}`,
                 boxShadow: i === 0 ? `0 2px 12px ${pastelYellow}` : "none"
               }}
@@ -273,7 +273,7 @@ export default function EventsTinder() {
                 }}>
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: 2
-                  }}>👍
+                  }}>❤️
                     <span style={{
                       fontWeight: 700,
                       color: pastelText
@@ -480,16 +480,7 @@ export default function EventsTinder() {
             </div>
           )}
         </div>
-        {lastDirection && (
-          <div style={{
-            marginTop: 28,
-            color: pastelText,
-            fontSize: 17,
-            fontWeight: 500
-          }}>
-            Ostatni swipe: <b>{lastDirection}</b>
-          </div>
-        )}
+        
         {events.length === 0 && !loading && (
           <div style={{
             marginTop: 28,
@@ -554,9 +545,9 @@ export default function EventsTinder() {
 
       {/* NAJGORETSI UŻYTKOWNICY */}
       <div style={{
-        width: 260,
-        minWidth: 180,
-        marginTop: "24px",
+        marginTop: 60,
+        minWidth: 350,
+        maxWidth: 420,
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-start"

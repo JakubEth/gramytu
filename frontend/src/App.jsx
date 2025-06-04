@@ -13,6 +13,7 @@ import MyEventsPanel from "./components/MyEventsPanel";
 import OnboardingQuiz from "./components/OnboardingQuiz";
 import UserProfilePageView from "./components/UserProfilePageView";
 import EventsList from "./components/EventsList";
+import SearchResults from "./components/SearchResults";
 import { jwtDecode } from "jwt-decode";
 
 function SuccessIcon() {
@@ -176,6 +177,7 @@ export default function App() {
           <OnboardingQuiz onUserUpdate={refreshUser} />
         } />
         <Route path="/user/:id" element={<UserProfilePageView />} />
+        <Route path="/search" element={<SearchResults />} />
       </Routes>
 
       {!hideHeaderFooter && <Footer />}

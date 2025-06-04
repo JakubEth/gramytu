@@ -50,6 +50,79 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// --- UNIWERSALNE WYSZUKIWANIE: eventy, użytkownicy, miejsca ---
+app.get('/search', async (req, res) => {
+  const query = (req.query.query || "").trim();
+  if (!query) return res.json({ events: [], users: [], places: [] });
+
+  try {
+    const events = await Event.find({
+      $or: [
+        { title: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } },
+        { tags: { $elemMatch: { $regex: query, $options: "i" } } },
+        { "location.name": { $regex: query, $options: "i" } }
+      ]
+    })
+      .limit(10)
+      .populate('hostId', 'username avatar');
+
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } }
+      ]
+    })
+      .limit(10)
+      .select("_id username avatar bio");
+
+    const placesAgg = await Event.aggregate([
+      { $match: { "location.name": { $regex: query, $options: "i" } } },
+      { $group: { _id: "$location.name", lat: { $first: "$location.lat" }, lng: { $first: "$location.lng" } } },
+      { $limit: 10 }
+    ]);
+    const places = placesAgg.map(p => ({
+      name: p._id,
+      lat: p.lat,
+      lng: p.lng
+    }));
+
+    res.json({ events, users, places });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd wyszukiwania" });
+  }
+});
+
+// --- PODPOWIEDZI LIVE (AUTOCOMPLETE) ---
+app.get('/autocomplete', async (req, res) => {
+  const query = (req.query.query || "").trim();
+  if (!query) return res.json({ events: [], users: [], places: [] });
+
+  try {
+    const events = await Event.find({
+      title: { $regex: query, $options: "i" }
+    }).limit(5).select("title");
+
+    const users = await User.find({
+      username: { $regex: query, $options: "i" }
+    }).limit(5).select("username avatar");
+
+    const placesAgg = await Event.aggregate([
+      { $match: { "location.name": { $regex: query, $options: "i" } } },
+      { $group: { _id: "$location.name" } },
+      { $limit: 5 }
+    ]);
+    const places = placesAgg.map(p => ({ name: p._id }));
+
+    res.json({ events, users, places });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Błąd autocomplete" });
+  }
+});
+
+
 app.get('/', (req, res) => {
   res.sendStatus(200);
 });
